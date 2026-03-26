@@ -2,6 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/rpa2-master/rpa-system/rpa-application/rpa-application.iml" filepath="$PROJECT_DIR$/rpa2-master/rpa-system/rpa-application/rpa-application.iml" />
+      <module fileurl="file://$PROJECT_DIR$/rpa2-master/rpa-system/rpa-modules/rpa-auth/rpa-auth.iml" filepath="$PROJECT_DIR$/rpa2-master/rpa-system/rpa-modules/rpa-auth/rpa-auth.iml" />
+      <module fileurl="file://$PROJECT_DIR$/rpa2-master/rpa-system/rpa-system.iml" filepath="$PROJECT_DIR$/rpa2-master/rpa-system/rpa-system.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/rpa2-master.iml" filepath="$PROJECT_DIR$/.idea/rpa2-master.iml" />
     </modules>
   </component>
