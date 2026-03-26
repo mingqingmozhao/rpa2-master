@@ -1,0 +1,6 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Wed Mar 25 09:27:34 CST 2026
+jdependency-2.8.0.jar>aliyun-maven=
+jdependency-2.8.0.jar>aliyunmaven=
+jdependency-2.8.0.pom>aliyun-maven=
+jdependency-2.8.0.pom>aliyunmaven=

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>com.rpa</groupId>
+        <artifactId>rpa-system</artifactId>
+        <version>1.0.0</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>rpa-modules</artifactId>
+    <packaging>pom</packaging>
+    <name>rpa-modules</name>
+    <description>RPA Business Modules Parent</description>
+
+    <modules>
+        <module>rpa-system-management</module>
+        <module>rpa-auth</module>
+        <module>rpa-task</module>
+        <module>rpa-process</module>
+        <module>rpa-robot</module>
+        <module>rpa-execution</module>
+        <module>rpa-dataquery</module>
+    </modules>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.rpa</groupId>
+            <artifactId>rpa-common</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.rpa</groupId>
+            <artifactId>rpa-framework</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+    </dependencies>
+
+</project>
