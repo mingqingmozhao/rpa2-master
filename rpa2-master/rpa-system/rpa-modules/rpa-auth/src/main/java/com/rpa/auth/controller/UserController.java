@@ -27,9 +27,10 @@ public class UserController {
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String realName,
+            @RequestParam(required = false) Long roleId,
             @RequestParam(required = false) Integer status) {
         Page<UserListResponse> result = userService.findAll(
-                username, realName, status, PageRequest.of(page - 1, pageSize));
+                username, realName, roleId, status, PageRequest.of(page - 1, pageSize));
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
     

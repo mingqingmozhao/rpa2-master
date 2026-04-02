@@ -12,6 +12,8 @@ import com.rpa.auth.repository.PermissionRepository;
 import com.rpa.auth.repository.RolePermissionRepository;
 import com.rpa.auth.repository.RoleRepository;
 import com.rpa.auth.repository.UserRoleRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +40,9 @@ public class RoleService {
     private PermissionRepository permissionRepository;
     @Autowired
     private UserRoleRepository userRoleRepository;
+    
+    @PersistenceContext
+    private EntityManager entityManager;
 
     // ==================== 查询 ====================
 
@@ -63,8 +68,15 @@ public class RoleService {
             List<Role> records = start < filtered.size() ? filtered.subList(start, end) : List.of();
             return new RolePageResponse(records, filtered.size(), page, pageSize);
         }
-        Page<Role> p = roleRepository.findAll(PageRequest.of(page - 1, pageSize));
-        return new RolePageResponse(p.getContent(), p.getTotalElements(), page, pageSize);
+        Page<Role> p = roleRepository.findByIsDeleted(PageRequest.of(page - 1, pageSize));
+        // 在内存中进行关键词过滤（因为需要兼容多个字段的模糊查询）
+        List<Role> filtered = p.getContent().stream()
+                .filter(r -> keyword == null || keyword.isBlank() || r.getRoleName().contains(keyword) || (r.getRemark() != null && r.getRemark().contains(keyword)))
+                // 角色编码匹配：由于数据库中没有 role_code 字段，使用 role_name 进行匹配
+                .filter(r -> roleCode == null || roleCode.isBlank() || (r.getRoleName() != null && r.getRoleName().toUpperCase().contains(roleCode.toUpperCase())))
+                .filter(r -> status == null || r.getStatus().equals(status))
+                .toList();
+        return new RolePageResponse(filtered, filtered.size(), page, pageSize);
     }
 
     private boolean keywordMatches(String actual, String keyword) {
@@ -79,7 +91,7 @@ public class RoleService {
                     .findFirst()
                     .orElse(null);
         }
-        return roleRepository.findById(id).orElse(null);
+        return roleRepository.findByIdAndIsDeleted(id);
     }
 
     // ==================== 创建 ====================
@@ -154,16 +166,36 @@ public class RoleService {
         if (!MOCK_MODE) {
             Role role = roleRepository.findById(id)
                     .orElseThrow(() -> new BusinessException("角色不存在"));
-            // 检查是否有用户使用该角色
-            List<UserRole> used = userRoleRepository.findByUserId(id);
-            if (!used.isEmpty()) {
-                throw new BusinessException("该角色已分配给 " + used.size() + " 个用户，无法删除");
+            
+            // 检查角色是否已被删除
+            if (role.getIsDeleted() == 1) {
+                throw new BusinessException("角色已被删除");
             }
-            // 删除角色-权限关联
+            
+            System.out.println("[RoleService.delete] 开始删除角色 ID: " + id);
+            
+            // 直接使用原生 SQL 查询是否有用户使用该角色
+            String checkSql = "SELECT COUNT(*) FROM sys_user_role WHERE role_id = ?";
+            var query = entityManager.createNativeQuery(checkSql);
+            query.setParameter(1, id);
+            Object result = query.getSingleResult();
+            long count = ((Number) result).longValue();
+            System.out.println("[RoleService.delete] 原生 SQL 查询角色 ID " + id + " 的用户数量：" + count);
+            
+            if (count > 0) {
+                throw new BusinessException("该角色已分配给 " + count + " 个用户，无法删除");
+            }
+            
+            // 删除角色 - 权限关联
             rolePermissionRepository.deleteByRoleId(id);
             // 逻辑删除角色
+            System.out.println("[RoleService.delete] 设置 is_deleted=1 之前：" + role.getIsDeleted());
             role.setIsDeleted(1);
-            roleRepository.save(role);
+            System.out.println("[RoleService.delete] 设置 is_deleted=1 之后：" + role.getIsDeleted());
+            System.out.println("[RoleService.delete] 准备保存角色...");
+            Role savedRole = roleRepository.save(role);
+            System.out.println("[RoleService.delete] 角色保存之后，is_deleted=" + savedRole.getIsDeleted());
+            System.out.println("[RoleService.delete] 角色 ID: " + id + " 删除成功");
             return;
         }
         // Mock 模式：静默成功

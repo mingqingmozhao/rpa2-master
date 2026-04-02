@@ -48,11 +48,11 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public Page<UserListResponse> findAll(String username, String realName,
-                                          Integer status, Pageable pageable) {
+                                          Long roleId, Integer status, Pageable pageable) {
         if (MOCK_MODE) {
-            return mockUserPage(username, realName, status, pageable);
+            return mockUserPage(username, realName, roleId, status, pageable);
         }
-        return userRepository.findAll(username, realName, status, pageable)
+        return userRepository.findAll(username, realName, roleId, status, pageable)
                 .map(this::convertToResponse);
     }
 
@@ -228,9 +228,37 @@ public class UserService {
         if (!MOCK_MODE) {
             User user = userRepository.findByUsername(username.trim())
                     .orElseThrow(() -> new BusinessException("用户不存在"));
-            if (request.getRealName() != null) user.setRealName(request.getRealName().trim());
-            if (request.getEmail() != null) user.setEmail(request.getEmail().trim());
-            if (request.getPhone() != null) user.setPhone(request.getPhone().trim());
+            
+            boolean hasChanges = false;
+            
+            if (request.getRealName() != null) {
+                String newRealName = request.getRealName().trim();
+                if (!newRealName.equals(user.getRealName())) {
+                    user.setRealName(newRealName);
+                    hasChanges = true;
+                }
+            }
+            
+            if (request.getEmail() != null) {
+                String newEmail = request.getEmail().trim();
+                if (!newEmail.equals(user.getEmail())) {
+                    user.setEmail(newEmail);
+                    hasChanges = true;
+                }
+            }
+            
+            if (request.getPhone() != null) {
+                String newPhone = request.getPhone().trim();
+                if (!newPhone.equals(user.getPhone())) {
+                    user.setPhone(newPhone);
+                    hasChanges = true;
+                }
+            }
+            
+            if (!hasChanges) {
+                throw new BusinessException("输入和之前的一致，未修改");
+            }
+            
             return userRepository.save(user);
         }
         // Mock 模式：返回模拟用户
@@ -301,12 +329,13 @@ public class UserService {
     // ==================== Mock 数据 ====================
 
     private Page<UserListResponse> mockUserPage(String username, String realName,
-                                                 Integer status, Pageable pageable) {
+                                                 Long roleId, Integer status, Pageable pageable) {
         List<UserListResponse> all = mockUsers().stream()
                 .filter(u -> !StringUtils.hasText(username) ||
                         u.getUsername().contains(username))
                 .filter(u -> !StringUtils.hasText(realName) ||
                         (u.getRealName() != null && u.getRealName().contains(realName)))
+                .filter(u -> roleId == null || (u.getRoleId() != null && u.getRoleId().equals(roleId)))
                 .filter(u -> status == null || u.getStatus().equals(status))
                 .toList();
 

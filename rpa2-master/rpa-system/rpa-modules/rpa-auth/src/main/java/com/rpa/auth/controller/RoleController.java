@@ -89,7 +89,9 @@ public class RoleController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        System.out.println("[RoleController.delete] 收到删除请求，角色 ID: " + id);
         roleService.delete(id);
+        System.out.println("[RoleController.delete] 角色 ID: " + id + " 删除成功");
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
