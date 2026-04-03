@@ -73,8 +73,8 @@ public class ProcessDefService {
         log.info("更新流程，ID: {}", id);
         ProcessDef existing = getById(id);
         
-        log.info("更新前的数据：processCode={}, processName={}, status={}", 
-            existing.getProcessCode(), existing.getProcessName(), existing.getStatus());
+        log.info("更新前的数据：processCode={}, processName={}, category={}, status={}", 
+            existing.getProcessCode(), existing.getProcessName(), existing.getCategory(), existing.getStatus());
         
         if (existsByCodeAndIdNot(process.getProcessCode(), id)) {
             log.error("流程编码已存在：{}", process.getProcessCode());
@@ -83,6 +83,8 @@ public class ProcessDefService {
         
         existing.setProcessCode(process.getProcessCode());
         existing.setProcessName(process.getProcessName());
+        existing.setCategory(process.getCategory());
+        existing.setVersion(process.getVersion());  // 添加这一行！
         existing.setDescription(process.getDescription());
         existing.setSteps(process.getSteps());
         existing.setStatus(process.getStatus());
@@ -91,9 +93,9 @@ public class ProcessDefService {
         existing.setProcessScript(process.getProcessScript());
         existing.setSaveScript(process.getSaveScript());
         
-        log.info("准备保存更新后的数据...");
+        log.info("准备保存更新后的数据，新 category: {}, 新 version: {}", process.getCategory(), process.getVersion());
         ProcessDef updated = processDefRepository.save(existing);
-        log.info("流程更新成功，ID: {}, 新 status: {}", updated.getId(), updated.getStatus());
+        log.info("流程更新成功，ID: {}, 新 category: {}, 新 version: {}", updated.getId(), updated.getCategory(), updated.getVersion());
         return updated;
     }
     

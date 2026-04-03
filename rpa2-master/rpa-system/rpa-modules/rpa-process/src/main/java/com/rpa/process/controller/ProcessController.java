@@ -116,12 +116,17 @@ public class ProcessController {
             @Valid @RequestBody UpdateProcessRequest request) {
         
         log.info("=== 更新流程，ID: {}", id);
-        log.info("流程编码：{}, 流程名称：{}", request.getProcessCode(), request.getProcessName());
+        log.info("接收到的完整 request: {}", request);
+        log.info("流程编码：{}", request.getProcessCode());
+        log.info("流程名称：{}", request.getProcessName());
+        log.info("分类：{}", request.getCategory());
+        log.info("版本：{}, 状态：{}", request.getVersion(), request.getStatus());
         try {
             ProcessDef process = new ProcessDef();
             process.setProcessCode(request.getProcessCode());
             process.setProcessName(request.getProcessName());
             process.setCategory(request.getCategory());
+            process.setVersion(request.getVersion());
             process.setDescription(request.getDescription());
             process.setSteps(request.getSteps());
             process.setStatus(request.getStatus());
@@ -130,8 +135,10 @@ public class ProcessController {
             process.setProcessScript(request.getProcessScript());
             process.setSaveScript(request.getSaveScript());
             
+            log.info("准备更新流程，分类字段值：{}, 版本：{}", process.getCategory(), process.getVersion());
+            
             ProcessDef updated = processDefService.update(id, process);
-            log.info("流程更新成功，ID: {}", updated.getId());
+            log.info("流程更新成功，ID: {}, 新分类：{}", updated.getId(), updated.getCategory());
             return ResponseEntity.ok(ApiResponse.ok(convertToDTO(updated)));
         } catch (Exception e) {
             log.error("更新流程失败，ID: {}", id, e);

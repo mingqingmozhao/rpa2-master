@@ -512,8 +512,15 @@ const handleView = async (row) => {
 const handleEdit = async (row) => {
   try {
     const res = await getProcessDetail(row.id)
+    console.log('=== 编辑流程，获取到的数据 ===')
+    console.log('res.data:', res.data)
+    console.log('category:', res.data.category)
+    
     isEdit.value = true
     Object.assign(formData, res.data)
+    console.log('赋值后的 formData:', formData)
+    console.log('formData.category:', formData.category)
+    
     dialogVisible.value = true
   } catch (error) {
     console.error('获取详情失败:', error)
@@ -1272,6 +1279,10 @@ const handleSubmit = async () => {
     
     submitLoading.value = true
     try {
+      console.log('=== 提交流程数据 ===')
+      console.log('formData:', formData)
+      console.log('category:', formData.category)
+      
       if (isEdit.value) {
         await updateProcess(formData.id, formData)
       } else {
