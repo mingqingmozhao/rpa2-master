@@ -310,7 +310,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getProcessList, deleteProcess, createProcess, updateProcess, getProcessDetail, getProcessScripts, updateProcessScripts } from '@/api/process'
+import { getProcessList, deleteProcess, createProcess, updateProcess, getProcessDetail, getProcessScripts, updateProcessScripts, validateGroovyScript, validateAllProcessSteps } from '@/api/process'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -545,21 +545,28 @@ const handleDesign = async (row) => {
       const scriptRes = await getProcessScripts(row.id)
       const scripts = scriptRes.data
       
+      // 获取当前时间
+      const currentTime = new Date().toLocaleString()
+      
       if (scripts.collectScript) {
         steps.value[0].code = scripts.collectScript
         steps.value[0].configured = true
+        steps.value[0].updateTime = currentTime
       }
       if (scripts.parseScript) {
         steps.value[1].code = scripts.parseScript
         steps.value[1].configured = true
+        steps.value[1].updateTime = currentTime
       }
       if (scripts.processScript) {
         steps.value[2].code = scripts.processScript
         steps.value[2].configured = true
+        steps.value[2].updateTime = currentTime
       }
       if (scripts.saveScript) {
         steps.value[3].code = scripts.saveScript
         steps.value[3].configured = true
+        steps.value[3].updateTime = currentTime
       }
     } catch (e) {
       console.log('获取脚本失败，使用空配置')
@@ -924,6 +931,80 @@ const handleSaveStep = async () => {
     return
   }
   
+  // 如果是 Groovy 脚本，先进行后端语法校验
+  if (stepForm.stepType === 'groovy' && stepForm.code && stepForm.code.trim()) {
+    try {
+      console.log('=== 正在校验单个环节 Groovy 脚本语法 ===')
+      console.log('脚本内容:', stepForm.code)
+      
+      const validationResponse = await validateGroovyScript({
+        script: stepForm.code,
+        stepName: steps.value[currentStepIndex.value].name
+      })
+      
+      console.log('校验响应:', validationResponse)
+      console.log('校验响应 data:', validationResponse.data)
+      
+      // 灵活处理不同的返回格式
+      // 格式 1: {code: 200, data: {valid: true, message: '...', errors: []}}
+      // 格式 2: {valid: true, message: '...', errors: []}
+      let valid, message, errors
+      
+      if (validationResponse.data && validationResponse.data.data) {
+        // 格式 1：标准 ApiResponse 格式
+        valid = validationResponse.data.data.valid
+        message = validationResponse.data.data.message || ''
+        errors = validationResponse.data.data.errors || []
+      } else if (validationResponse.data && validationResponse.data.valid !== undefined) {
+        // 格式 2：直接返回校验结果
+        valid = validationResponse.data.valid
+        message = validationResponse.data.message || ''
+        errors = validationResponse.data.errors || []
+      } else {
+        throw new Error('校验 API 返回数据格式错误：' + JSON.stringify(validationResponse))
+      }
+      
+      console.log('校验详情:', { valid, message, errors })
+      
+      if (valid !== true) {
+        // 语法校验失败，阻止保存
+        console.error('语法校验失败，阻止保存')
+        let errorMsg = '语法校验失败'
+        if (message) {
+          errorMsg += ': ' + message
+        }
+        if (errors && errors.length > 0) {
+          errorMsg += '<br><br><b>错误详情：</b><br>' + errors.join('<br>')
+        }
+        
+        ElMessageBox.alert(errorMsg, '❌ 语法校验失败', {
+          type: 'error',
+          dangerouslyUseHTMLString: true,
+          confirmButtonText: '确定'
+        })
+        return  // 阻止保存
+      }
+      
+      console.log('✓ Groovy 脚本语法校验通过，允许保存')
+    } catch (error) {
+      console.error('Groovy 脚本语法校验异常:', error)
+      let errorMsg = '语法校验失败'
+      if (error.response?.data?.message) {
+        errorMsg += ': ' + error.response.data.message
+      } else if (error.message) {
+        errorMsg += ': ' + error.message
+      }
+      
+      ElMessageBox.alert(errorMsg, '❌ 语法校验失败', {
+        type: 'error',
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: '确定'
+      })
+      return  // 阻止保存
+    }
+  }
+  
+  // 校验通过（或不是 Groovy 脚本），继续保存
   stepSaving.value = true
   try {
     const index = currentStepIndex.value
@@ -963,22 +1044,91 @@ const handleSaveStep = async () => {
   }
 }
 
-// 校验所有环节
-const handleValidateAll = () => {
+// 校验所有环节（调用后端 API 进行 Groovy 语法校验）
+const handleValidateAll = async () => {
+  // 1. 先检查是否所有环节都已配置
   const unconfigured = steps.value.filter(s => !s.configured)
   if (unconfigured.length > 0) {
     ElMessageBox.alert(
-      `以下环节未配置：${unconfigured.map(s => s.name).join('、')}`,
+      `以下环节未配置：${unconfigured.map(s => s.name).join('、')}，请先配置后再校验`,
       '校验失败',
       { type: 'warning' }
     )
     return
   }
-  ElMessage.success('所有环节已配置')
+  
+  // 2. 检查是否有 Groovy 脚本需要校验
+  const hasGroovyScript = steps.value.some(s => s.stepType === 'groovy' && s.code && s.code.trim())
+  if (!hasGroovyScript) {
+    ElMessageBox.alert(
+      '没有需要校验的 Groovy 脚本（所有环节都是 JSON 配置或空脚本）',
+      '提示',
+      { type: 'info' }
+    )
+    return
+  }
+  
+  try {
+    // 3. 调用后端 API 校验所有环节
+    console.log('=== 开始校验所有环节 ===')
+    const response = await validateAllProcessSteps(currentProcessId.value)
+    
+    console.log('校验结果:', response.data)
+    
+    // 灵活处理不同的返回格式
+    let allValid, message, stepResults
+    
+    if (response.data && response.data.data) {
+      // 格式 1：标准 ApiResponse 格式
+      allValid = response.data.data.allValid
+      message = response.data.data.message || ''
+      stepResults = response.data.data.stepResults || {}
+    } else if (response.data && response.data.allValid !== undefined) {
+      // 格式 2：直接返回校验结果
+      allValid = response.data.allValid
+      message = response.data.message || ''
+      stepResults = response.data.stepResults || {}
+    } else {
+      throw new Error('校验 API 返回数据格式错误')
+    }
+    
+    console.log('校验结果详情:', { allValid, message, stepResults })
+    
+    if (allValid === true) {
+      ElMessage.success('✅ 所有环节语法校验通过！')
+    } else {
+      // 校验失败，显示错误详情
+      let errorDetail = ''
+      if (message) {
+        errorDetail = message
+      }
+      if (stepResults && Object.keys(stepResults).length > 0) {
+        errorDetail += '<br><br><b>各环节校验结果：</b><br>'
+        Object.entries(stepResults).forEach(([key, value]) => {
+          if (!value.valid) {
+            errorDetail += `<br>❌ ${value.stepName}: ${value.message || '语法错误'}`
+          }
+        })
+      }
+      
+      ElMessageBox.alert(
+        errorDetail || '语法校验失败',
+        '❌ 语法校验失败',
+        { 
+          type: 'error',
+          dangerouslyUseHTMLString: true
+        }
+      )
+    }
+  } catch (error) {
+    console.error('语法校验失败:', error)
+    const errorMsg = error.response?.data?.message || error.message || '语法校验失败'
+    ElMessageBox.alert(errorMsg, '❌ 语法校验失败', { type: 'error' })
+  }
 }
 
 const handleSaveProcessSteps = async () => {
-  // 校验所有环节
+  // 1. 先检查是否所有环节都已配置
   const unconfigured = steps.value.filter(s => !s.configured)
   if (unconfigured.length > 0) {
     ElMessageBox.confirm(
@@ -990,16 +1140,86 @@ const handleSaveProcessSteps = async () => {
         type: 'warning'
       }
     ).then(() => {
-      // 用户确认继续
-      saveToBackend()
+      // 用户确认继续，但还是要先校验语法
+      validateAndSave()
     }).catch(() => {
       // 用户取消
     })
     return
   }
   
-  // 所有环节已配置，直接保存
-  await saveToBackend()
+  // 2. 所有环节已配置，进行语法校验
+  await validateAndSave()
+}
+
+// 校验语法并保存
+const validateAndSave = async () => {
+  console.log('=== 开始校验并保存流程 ===')
+  
+  try {
+    // 调用后端 API 校验所有环节
+    console.log('调用校验 API...')
+    const validationResponse = await validateAllProcessSteps(currentProcessId.value)
+    
+    console.log('校验响应:', validationResponse)
+    console.log('校验响应 data:', validationResponse.data)
+    
+    // 灵活处理不同的返回格式
+    let allValid, message, errors
+    
+    if (validationResponse.data && validationResponse.data.data) {
+      // 格式 1：标准 ApiResponse 格式
+      allValid = validationResponse.data.data.allValid
+      message = validationResponse.data.data.message || ''
+      errors = validationResponse.data.data.errors || []
+    } else if (validationResponse.data && validationResponse.data.allValid !== undefined) {
+      // 格式 2：直接返回校验结果
+      allValid = validationResponse.data.allValid
+      message = validationResponse.data.message || ''
+      errors = validationResponse.data.errors || []
+    } else {
+      throw new Error('校验 API 返回数据格式错误：' + JSON.stringify(validationResponse))
+    }
+    
+    console.log('校验结果详情:', { allValid, message, errors })
+    
+    if (allValid === true) {
+      // 语法校验通过，保存到后端
+      console.log('校验通过，开始保存...')
+      await saveToBackend()
+    } else {
+      // 语法校验失败，阻止保存
+      console.error('校验失败，阻止保存')
+      let errorMsg = '语法校验失败'
+      if (message) {
+        errorMsg += ': ' + message
+      }
+      if (errors && errors.length > 0) {
+        errorMsg += '<br><br><b>错误详情：</b><br>' + errors.join('<br>')
+      }
+      
+      ElMessageBox.alert(errorMsg, '❌ 语法校验失败', { 
+        type: 'error',
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: '确定'
+      })
+    }
+  } catch (error) {
+    console.error('校验过程异常:', error)
+    let errorMsg = '语法校验失败'
+    if (error.response?.data?.message) {
+      errorMsg += ': ' + error.response.data.message
+    } else if (error.message) {
+      errorMsg += ': ' + error.message
+    }
+    
+    ElMessageBox.alert(errorMsg, '❌ 语法校验失败', { 
+      type: 'error',
+      confirmButtonText: '确定'
+    })
+    // 发生异常时，绝对不要保存
+    return
+  }
 }
 
 const saveToBackend = async () => {

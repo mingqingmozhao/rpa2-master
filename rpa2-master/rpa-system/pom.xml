@@ -21,6 +21,7 @@
         <module>rpa-modules/rpa-auth</module>
         <module>rpa-modules/rpa-task</module>
         <module>rpa-modules/rpa-process</module>
+        <module>rpa-modules/rpa-robot</module>
         <module>rpa-application</module>
     </modules>
 
@@ -50,6 +51,11 @@
             <dependency>
                 <groupId>com.rpa</groupId>
                 <artifactId>rpa-process</artifactId>
+                <version>${rpa.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.rpa</groupId>
+                <artifactId>rpa-robot</artifactId>
                 <version>${rpa.version}</version>
             </dependency>
         </dependencies>

@@ -1,15 +1,29 @@
 import request from '@/utils/request'
 
-// 分页查询机器人
+/**
+ * 分页查询机器人列表
+ */
 export function getRobotList(params) {
   return request({
-    url: '/robot/list',
+    url: '/robot',
     method: 'get',
     params
   })
 }
 
-// 创建机器人
+/**
+ * 根据 ID 查询机器人详情
+ */
+export function getRobotById(id) {
+  return request({
+    url: `/robot/${id}`,
+    method: 'get'
+  })
+}
+
+/**
+ * 创建机器人
+ */
 export function createRobot(data) {
   return request({
     url: '/robot',
@@ -18,7 +32,9 @@ export function createRobot(data) {
   })
 }
 
-// 更新机器人
+/**
+ * 更新机器人
+ */
 export function updateRobot(id, data) {
   return request({
     url: `/robot/${id}`,
@@ -27,7 +43,9 @@ export function updateRobot(id, data) {
   })
 }
 
-// 删除机器人
+/**
+ * 删除机器人
+ */
 export function deleteRobot(id) {
   return request({
     url: `/robot/${id}`,
@@ -35,27 +53,43 @@ export function deleteRobot(id) {
   })
 }
 
-// 获取机器人详情
-export function getRobotDetail(id) {
+/**
+ * 获取机器人状态统计
+ */
+export function getRobotStatus() {
   return request({
-    url: `/robot/${id}`,
+    url: '/robot/status',
     method: 'get'
   })
 }
 
-// 获取机器人状态
-export function getRobotStatus(id) {
+/**
+ * 获取可用机器人列表
+ */
+export function getAvailableRobots() {
+  return request({
+    url: '/robot/available',
+    method: 'get'
+  })
+}
+
+/**
+ * 更新机器人状态
+ */
+export function updateRobotStatus(id, status) {
   return request({
     url: `/robot/${id}/status`,
-    method: 'get'
+    method: 'put',
+    data: { status }
   })
 }
 
-// 更新机器人心跳
-export function updateRobotHeartbeat(id, data) {
+/**
+ * 更新心跳时间
+ */
+export function updateRobotHeartbeat(id) {
   return request({
     url: `/robot/${id}/heartbeat`,
-    method: 'post',
-    data
+    method: 'post'
   })
 }

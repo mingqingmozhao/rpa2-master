@@ -91,13 +91,21 @@ const handleLogin = async () => {
           password: loginForm.password,
           rememberMe: loginForm.rememberMe
         })
-        
-        // 保存token
-        userStore.setToken(res.data.token)
-        
+
+        // 保存token（后端返回 ApiResponse{code,data{token,...}}）
+        const token = res.data?.token || res.token
+        userStore.setToken(token)
+
         // 获取用户信息（包含角色和权限）
         const userRes = await getUserInfo()
-        userStore.setUserInfo(userRes.data)
+        // 后端返回 roles 数组，兼容单 role 字符串
+        const userData = userRes.data || {}
+        if (userData.role && !userData.roles) {
+          userData.roles = [userData.role]
+        } else if (!userData.roles) {
+          userData.roles = []
+        }
+        userStore.setUserInfo(userData)
         
         ElMessage.success('登录成功')
         router.push('/')

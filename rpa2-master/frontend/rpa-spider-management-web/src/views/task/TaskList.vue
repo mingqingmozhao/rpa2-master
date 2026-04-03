@@ -26,16 +26,6 @@
           </el-select>
         </el-form-item>
         
-        <el-form-item label="开始时间">
-          <el-date-picker
-            v-model="searchForm.dateRange"
-            type="datetimerange"
-            range-separator="至"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-          />
-        </el-form-item>
-        
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>
@@ -62,10 +52,11 @@
         <el-table-column prop="enterpriseName" label="企业名称" />
         <el-table-column prop="status" label="任务状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">{{ row.status }}</el-tag>
+            <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" />
+        <el-table-column prop="priority" label="优先级" width="80" />
+        <el-table-column prop="createTime" label="创建时间" width="170" />
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleView(row)">查看详情</el-button>
@@ -103,15 +94,31 @@
           <el-input v-model="formData.taskName" placeholder="请输入任务名称" />
         </el-form-item>
         <el-form-item label="流程" prop="processId">
-          <el-select v-model="formData.processId" placeholder="请选择流程" style="width: 100%;">
-            <el-option label="测试流程" :value="1" />
-            <el-option label="示例流程" :value="2" />
+          <el-select v-model="formData.processId" placeholder="请选择流程" style="width: 100%;" :disabled="isEdit">
+            <el-option
+              v-for="item in processList"
+              :key="item.id"
+              :label="item.processName"
+              :value="item.id"
+            >
+              <span>{{ item.processName }}</span>
+              <span style="float: right; color: #8492a6; font-size: 13px">{{ item.processCode }}</span>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="机器人" prop="robotId">
-          <el-select v-model="formData.robotId" placeholder="请选择机器人" style="width: 100%;">
-            <el-option label="机器人 001" :value="1" />
-            <el-option label="机器人 -001" :value="2" />
+          <el-select v-model="formData.robotId" placeholder="请选择机器人" style="width: 100%;" clearable>
+            <el-option
+              v-for="item in robotList"
+              :key="item.id"
+              :label="item.robotName"
+              :value="item.id"
+            >
+              <span>{{ item.robotName }}</span>
+              <el-tag size="small" style="margin-left: 10px;" :type="item.status === 'ONLINE' ? 'success' : 'info'">
+                {{ item.status === 'ONLINE' ? '在线' : item.status === 'BUSY' ? '忙碌' : '离线' }}
+              </el-tag>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="纳税人识别号">
@@ -150,7 +157,7 @@
         <el-descriptions-item label="分类">{{ currentRow.category || '-' }}</el-descriptions-item>
         <el-descriptions-item label="优先级">{{ currentRow.priority || 5 }}</el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag :type="getStatusType(currentRow.status)" size="small">{{ currentRow.status }}</el-tag>
+          <el-tag :type="getStatusType(currentRow.status)" size="small">{{ getStatusLabel(currentRow.status) }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="流程" :span="2">{{ currentRow.processName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="机器人" :span="2">{{ currentRow.robotName || '-' }}</el-descriptions-item>
@@ -170,7 +177,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTaskList, deleteTask, createTask, updateTask, getTaskDetail, executeTask } from '@/api/task'
+import { getTaskList, deleteTask, createTask, updateTask, getTaskById, executeTask, getProcessList, getAvailableRobots } from '@/api/task'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -179,11 +186,12 @@ const viewDialogVisible = ref(false)
 const isEdit = ref(false)
 const submitLoading = ref(false)
 const currentRow = ref(null)
+const processList = ref([])
+const robotList = ref([])
 
 const searchForm = reactive({
   keyword: '',
-  status: '',
-  dateRange: []
+  status: ''
 })
 
 const pagination = reactive({
@@ -214,6 +222,26 @@ const formRules = {
   robotId: [{ required: true, message: '请选择机器人', trigger: 'change' }]
 }
 
+// 加载流程列表
+const loadProcessList = async () => {
+  try {
+    const res = await getProcessList({ page: 1, pageSize: 100, status: 1 })
+    processList.value = res.data.records || []
+  } catch (error) {
+    console.error('加载流程列表失败:', error)
+  }
+}
+
+// 加载可用机器人列表
+const loadRobotList = async () => {
+  try {
+    const res = await getAvailableRobots()
+    robotList.value = res.data || []
+  } catch (error) {
+    console.error('加载机器人列表失败:', error)
+  }
+}
+
 const loadData = async () => {
   loading.value = true
   try {
@@ -242,7 +270,6 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.keyword = ''
   searchForm.status = ''
-  searchForm.dateRange = []
   handleSearch()
 }
 
@@ -268,6 +295,9 @@ const handleCreate = () => {
     priority: 5,
     remark: ''
   })
+  // 加载流程和机器人列表
+  loadProcessList()
+  loadRobotList()
   dialogVisible.value = true
 }
 
@@ -284,9 +314,12 @@ const handleView = async (row) => {
 
 const handleEdit = async (row) => {
   try {
-    const res = await getTaskDetail(row.id)
+    const res = await getTaskById(row.id)
     isEdit.value = true
     Object.assign(formData, res.data)
+    // 加载流程和机器人列表
+    loadProcessList()
+    loadRobotList()
     dialogVisible.value = true
   } catch (error) {
     console.error('获取详情失败:', error)
@@ -355,12 +388,22 @@ const handleSubmit = async () => {
 
 const getStatusType = (status) => {
   const map = {
-    'pending': 'info',
-    'running': 'warning',
-    'completed': 'success',
-    'failed': 'danger'
+    1: 'info',    // pending
+    2: 'warning', // running
+    3: 'success', // completed
+    4: 'danger'   // failed
   }
   return map[status] || 'info'
+}
+
+const getStatusLabel = (status) => {
+  const map = {
+    1: '待执行',
+    2: '运行中',
+    3: '已完成',
+    4: '失败'
+  }
+  return map[status] || '未知'
 }
 
 onMounted(() => {

@@ -23,8 +23,12 @@
         
         <el-form-item label="角色">
           <el-select v-model="searchForm.roleId" placeholder="请选择角色" clearable>
-            <el-option label="系统管理员" :value="1" />
-            <el-option label="普通用户" :value="2" />
+            <el-option
+              v-for="role in roleOptions"
+              :key="role.id"
+              :label="role.roleName"
+              :value="role.id"
+            />
           </el-select>
         </el-form-item>
         
@@ -59,7 +63,7 @@
         <el-table-column prop="realName" label="真实姓名" />
         <el-table-column prop="email" label="邮箱" />
         <el-table-column prop="phone" label="手机号" />
-        <el-table-column prop="roleId" label="角色 ID" width="80" />
+        <el-table-column prop="roleName" label="角色" width="100" />
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
@@ -122,8 +126,12 @@
         </el-form-item>
         <el-form-item label="角色" prop="roleId">
           <el-select v-model="formData.roleId" placeholder="请选择角色" style="width: 100%;">
-            <el-option label="系统管理员" :value="1" />
-            <el-option label="普通用户" :value="2" />
+            <el-option
+              v-for="role in roleOptions"
+              :key="role.id"
+              :label="role.roleName"
+              :value="role.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
@@ -158,7 +166,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUserList, createUser, updateUser, deleteUser, resetPassword, updateUserStatus, assignUserRole } from '@/api/user'
+import { getUserList, createUser, updateUser, deleteUser, resetPassword, updateUserStatus, assignUserRole, getRoleList } from '@/api/user'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -167,6 +175,7 @@ const dialogVisible = ref(false)
 const passwordDialogVisible = ref(false)
 const isEdit = ref(false)
 const currentUserId = ref(null)
+const roleOptions = ref([])
 
 const searchForm = reactive({
   username: '',
@@ -233,20 +242,30 @@ const loadData = async () => {
     const params = {
       page: pagination.page,
       pageSize: pagination.pageSize,
-      username: searchForm.username,
-      realName: searchForm.realName,
-      roleId: searchForm.roleId,
-      status: searchForm.status
+      username: searchForm.username || undefined,
+      realName: searchForm.realName || undefined,
+      roleId: searchForm.roleId || undefined,
+      status: searchForm.status ?? undefined
     }
-    
+
     const res = await getUserList(params)
-    tableData.value = res.data.records || []
+    tableData.value = res.data.records || res.data?.content || []
     pagination.total = res.data.total || 0
   } catch (error) {
     console.error('加载失败:', error)
     ElMessage.error('加载数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+const loadRoleOptions = async () => {
+  try {
+    const res = await getRoleList({ page: 1, pageSize: 100 })
+    const roles = res.data?.records || res.data?.content || res.data || []
+    roleOptions.value = roles
+  } catch (error) {
+    console.error('加载角色列表失败:', error)
   }
 }
 
@@ -339,7 +358,7 @@ const handleToggleStatus = (row) => {
 }
 
 const handleDelete = (row) => {
-  ElMessageBox.confirm('确认删除该用户吗？', '提示', {
+  ElMessageBox.confirm('确认删除该用户吗？此操作将永久删除，无法恢复！', '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -363,19 +382,19 @@ const handleResetPassword = (row) => {
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  
+
   await formRef.value.validate(async (valid) => {
     if (!valid) return
-    
+
     submitLoading.value = true
     try {
       if (isEdit.value) {
-        // 编辑时，如果密码为空则不发送密码字段
         const data = { ...formData }
-        if (!data.password) {
-          delete data.password
-        }
+        delete data.id
+        delete data.password
         await updateUser(formData.id, data)
+        // 角色变更单独处理
+        await assignUserRole(formData.id, formData.roleId)
       } else {
         await createUser(formData)
       }
@@ -384,7 +403,32 @@ const handleSubmit = async () => {
       loadData()
     } catch (error) {
       console.error('操作失败:', error)
-      ElMessage.error(error.response?.data?.message || '操作失败')
+      
+      // 根据错误类型显示不同的提示信息
+      const errorMsg = error.response?.data?.message || error.message || '操作失败'
+      
+      // 检查是否是用户名重复、手机号重复等提示
+      if (errorMsg.includes('用户名') || errorMsg.includes('已存在')) {
+        ElMessage.warning({
+          message: errorMsg,
+          duration: 3000
+        })
+      } else if (errorMsg.includes('手机号')) {
+        ElMessage.warning({
+          message: errorMsg,
+          duration: 3000
+        })
+      } else if (errorMsg.includes('邮箱')) {
+        ElMessage.warning({
+          message: errorMsg,
+          duration: 3000
+        })
+      } else {
+        ElMessage.error({
+          message: errorMsg,
+          duration: 3000
+        })
+      }
     } finally {
       submitLoading.value = false
     }
@@ -393,10 +437,10 @@ const handleSubmit = async () => {
 
 const handleResetPasswordSubmit = async () => {
   if (!passwordFormRef.value) return
-  
+
   await passwordFormRef.value.validate(async (valid) => {
     if (!valid) return
-    
+
     submitLoading.value = true
     try {
       await resetPassword(currentUserId.value, passwordForm.password)
@@ -404,7 +448,21 @@ const handleResetPasswordSubmit = async () => {
       passwordDialogVisible.value = false
     } catch (error) {
       console.error('重置密码失败:', error)
-      ElMessage.error('重置密码失败')
+      
+      // 根据错误类型显示不同的提示信息
+      const errorMsg = error.response?.data?.message || error.message || '重置密码失败'
+      
+      if (errorMsg.includes('密码') || errorMsg.includes('长度')) {
+        ElMessage.warning({
+          message: errorMsg,
+          duration: 3000
+        })
+      } else {
+        ElMessage.error({
+          message: errorMsg,
+          duration: 3000
+        })
+      }
     } finally {
       submitLoading.value = false
     }
@@ -413,6 +471,7 @@ const handleResetPasswordSubmit = async () => {
 
 onMounted(() => {
   loadData()
+  loadRoleOptions()
 })
 </script>
 

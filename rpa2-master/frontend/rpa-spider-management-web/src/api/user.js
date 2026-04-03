@@ -25,10 +25,10 @@ export function getUserInfo() {
   })
 }
 
-// 修改用户信息
+// 修改个人资料
 export function updateUserInfo(data) {
   return request({
-    url: '/auth/user-info',
+    url: '/auth/profile',
     method: 'put',
     data
   })
@@ -38,7 +38,7 @@ export function updateUserInfo(data) {
 export function updatePassword(data) {
   return request({
     url: '/auth/password',
-    method: 'put',
+    method: 'post',
     data
   })
 }
@@ -87,11 +87,11 @@ export function getUserDetail(id) {
 }
 
 // 重置密码
-export function resetPassword(id, data) {
+export function resetPassword(id, newPassword) {
   return request({
-    url: `/admin/user/${id}/password`,
-    method: 'put',
-    data: { password: data }
+    url: `/admin/user/reset-password`,
+    method: 'post',
+    data: { userId: id, newPassword }
   })
 }
 
@@ -100,10 +100,8 @@ export function uploadAvatar(data) {
   return request({
     url: '/auth/avatar',
     method: 'post',
-    data,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+    data
+    // Content-Type 会自动由 axios 设置为 multipart/form-data 并带上 boundary
   })
 }
 
@@ -116,11 +114,20 @@ export function updateUserStatus(id, status) {
   })
 }
 
-// 分配用户角色
+// 分配用户角色（Body 方式）
 export function assignUserRole(id, roleId) {
   return request({
     url: `/admin/user/${id}/role`,
     method: 'put',
-    params: { roleId }
+    data: { roleId }
+  })
+}
+
+// 获取角色列表
+export function getRoleList(params) {
+  return request({
+    url: '/admin/role/list',
+    method: 'get',
+    params
   })
 }

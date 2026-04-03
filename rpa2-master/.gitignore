@@ -1,0 +1,25 @@
+# 编译输出
+target/
+*.class
+
+# IDEA 配置
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Maven
+maven-archiver/
+maven-status/
+generated-sources/
+*.jar
+*.war
+*.ear
+
+# 上传文件
+uploads/
+upload/
+
+# 系统文件
+.DS_Store
+*.log

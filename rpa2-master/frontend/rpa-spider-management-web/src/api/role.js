@@ -1,5 +1,13 @@
 import request from '@/utils/request'
 
+// 获取权限树（用于角色分配时勾选权限）
+export function getPermissionTree() {
+  return request({
+    url: '/admin/permission/tree',
+    method: 'get'
+  })
+}
+
 // 分页查询角色列表
 export function getRoleList(params) {
   return request({
@@ -47,7 +55,7 @@ export function getRoleDetail(id) {
 export function assignPermissions(id, permissionIds) {
   return request({
     url: `/admin/role/${id}/permissions`,
-    method: 'post',
+    method: 'put',
     data: { permissionIds }
   })
 }

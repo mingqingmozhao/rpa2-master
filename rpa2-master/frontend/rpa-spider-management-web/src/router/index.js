@@ -123,8 +123,12 @@ router.beforeEach((to, from, next) => {
   const requiredRoles = to.meta?.roles
   if (requiredRoles && requiredRoles.length > 0) {
     const userRoles = userStore.userInfo?.roles || []
+    if (userRoles.length === 0) {
+      next('/dashboard')
+      return
+    }
     const hasPermission = requiredRoles.some(role => userRoles.includes(role))
-    
+
     if (!hasPermission) {
       next('/dashboard')
       return

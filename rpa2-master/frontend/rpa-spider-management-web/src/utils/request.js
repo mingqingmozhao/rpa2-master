@@ -33,8 +33,8 @@ request.interceptors.response.use(
       return response
     }
     
-    // 如果返回的状态码不是 200，说明接口有错误
-    if (res.code !== 200) {
+    // 统一包装：仅当存在 code 字段且不等于 200 时视为业务错误
+    if (Object.prototype.hasOwnProperty.call(res, 'code') && res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
       
       // 401: 未授权

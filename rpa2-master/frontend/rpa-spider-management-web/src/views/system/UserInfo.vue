@@ -25,8 +25,8 @@
               </div>
               <div class="detail-item">
                 <el-icon><Avatar /></el-icon>
-                <span class="label">昵称：</span>
-                <span class="value">{{ userInfo.nickname || '未设置' }}</span>
+                <span class="label">姓名：</span>
+                <span class="value">{{ userInfo.realName || '未设置' }}</span>
               </div>
               <div class="detail-item">
                 <el-icon><Message /></el-icon>
@@ -55,8 +55,8 @@
             <span>修改基本信息</span>
           </template>
           <el-form ref="profileFormRef" :model="profileForm" :rules="profileRules" label-width="100px">
-            <el-form-item label="昵称" prop="nickname">
-              <el-input v-model="profileForm.nickname" placeholder="请输入昵称" maxlength="20" />
+            <el-form-item label="姓名" prop="realName">
+              <el-input v-model="profileForm.realName" placeholder="请输入姓名" maxlength="20" />
             </el-form-item>
             <el-form-item label="邮箱" prop="email">
               <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
@@ -105,6 +105,7 @@
           :show-file-list="false"
           :before-upload="beforeAvatarUpload"
           :http-request="uploadAvatar"
+          :auto-upload="true"
           accept="image/*"
         >
           <img v-if="avatarUrl" :src="avatarUrl" class="avatar-preview" />
@@ -115,7 +116,7 @@
         </div>
       </div>
       <template #footer>
-        <el-button @click="showAvatarDialog = false">取消</el-button>
+        <el-button @click="showAvatarDialog = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -139,7 +140,7 @@ const avatarUploadRef = ref(null)
 const userInfo = reactive({
   userId: null,
   username: '',
-  nickname: '',
+  realName: '',
   avatar: '',
   email: '',
   phone: '',
@@ -147,7 +148,7 @@ const userInfo = reactive({
 })
 
 const profileForm = reactive({
-  nickname: '',
+  realName: '',
   email: '',
   phone: ''
 })
@@ -167,9 +168,9 @@ const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 const phoneRegex = /^1[3-9]\d{9}$/
 
 const profileRules = reactive({
-  nickname: [
-    { required: true, message: '请输入昵称', trigger: 'blur' },
-    { min: 1, max: 20, message: '昵称长度不能超过 20 个字符', trigger: 'blur' }
+  realName: [
+    { required: true, message: '请输入姓名', trigger: 'blur' },
+    { min: 1, max: 30, message: '姓名长度不能超过 30 个字符', trigger: 'blur' }
   ],
   email: [
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' },
@@ -228,9 +229,8 @@ const avatarUrl = computed(() => {
     if (userInfo.avatar.startsWith('http://') || userInfo.avatar.startsWith('https://')) {
       return userInfo.avatar
     }
-    // 获取 API 基础 URL
-    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-    return baseURL + userInfo.avatar
+    // 使用代理后的相对路径（开发环境）或生产环境的绝对路径
+    return userInfo.avatar
   }
   return defaultAvatar
 })
@@ -243,15 +243,15 @@ const loadUserInfo = async () => {
     Object.assign(userInfo, {
       userId: data.userId,
       username: data.username,
-      nickname: data.nickname || '',
+      realName: data.realName || '',
       avatar: data.avatar || '',
       email: data.email || '',
       phone: data.phone || '',
       createTime: data.createTime || new Date().toLocaleString()
     })
-    
+
     // 填充表单
-    profileForm.nickname = userInfo.nickname
+    profileForm.realName = userInfo.realName
     profileForm.email = userInfo.email
     profileForm.phone = userInfo.phone
   } catch (error) {
@@ -269,7 +269,7 @@ const handleUpdateProfile = async () => {
     profileLoading.value = true
     try {
       await updateUserInfo({
-        nickname: profileForm.nickname,
+        realName: profileForm.realName,
         email: profileForm.email,
         phone: profileForm.phone
       })
@@ -277,7 +277,27 @@ const handleUpdateProfile = async () => {
       await loadUserInfo()
     } catch (error) {
       console.error('更新失败:', error)
-      ElMessage.error('更新失败：' + (error.message || '未知错误'))
+      
+      // 根据错误类型显示不同的提示信息
+      const errorMsg = error.response?.data?.message || error.message || '更新失败：未知错误'
+      
+      // 检查是否是手机号重复的错误
+      if (errorMsg.includes('手机号') || errorMsg.includes('一致') || errorMsg.includes('未修改')) {
+        ElMessage.warning({
+          message: errorMsg,
+          duration: 3000
+        })
+      } else if (errorMsg.includes('邮箱')) {
+        ElMessage.warning({
+          message: errorMsg,
+          duration: 3000
+        })
+      } else {
+        ElMessage.error({
+          message: errorMsg,
+          duration: 3000
+        })
+      }
     } finally {
       profileLoading.value = false
     }
@@ -309,7 +329,22 @@ const handleUpdatePassword = async () => {
       }, 1000)
     } catch (error) {
       console.error('修改密码失败:', error)
-      ElMessage.error('修改密码失败：' + (error.message || '未知错误'))
+      
+      // 根据错误类型显示不同的提示信息
+      const errorMsg = error.response?.data?.message || error.message || '修改密码失败：未知错误'
+      
+      // 检查是否是旧密码错误的提示
+      if (errorMsg.includes('密码') || errorMsg.includes('不正确')) {
+        ElMessage.warning({
+          message: errorMsg,
+          duration: 3000
+        })
+      } else {
+        ElMessage.error({
+          message: errorMsg,
+          duration: 3000
+        })
+      }
     } finally {
       passwordLoading.value = false
     }
@@ -339,7 +374,7 @@ const uploadAvatar = async (options) => {
   
   try {
     const formData = new FormData()
-    formData.append('avatar', file)
+    formData.append('file', file)
     
     const res = await uploadAvatarApi(formData)
     

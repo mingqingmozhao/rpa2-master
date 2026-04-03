@@ -5,8 +5,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BindException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.stream.Collectors;
 
 /**
  * 全局异常处理器，统一将各层抛出的异常映射为标准 ApiResponse。
@@ -17,6 +21,30 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /** 参数校验失败（@Valid 注解校验失败） */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException ex) {
+        String errorMsg = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+        
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, "参数校验失败：" + errorMsg));
+    }
+
+    /** 绑定异常 */
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBindException(BindException ex) {
+        String errorMsg = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+        
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, "参数绑定失败：" + errorMsg));
+    }
 
     /** 凭证不匹配（Spring Security 认证阶段） */
     @ExceptionHandler(BadCredentialsException.class)

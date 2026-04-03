@@ -1,52 +1,52 @@
 import request from '@/utils/request'
 
-// 分页查询资源列表
+// 分页查询权限列表（扁平表格）
 export function getResourceList(params) {
   return request({
-    url: '/resource/list',
+    url: '/admin/permission/list',
     method: 'get',
     params
   })
 }
 
-// 创建资源
+// 获取权限树（用于父级选择 / 角色分配）
+export function getResourceTree() {
+  return request({
+    url: '/admin/permission/tree',
+    method: 'get'
+  })
+}
+
+// 创建权限
 export function createResource(data) {
   return request({
-    url: '/resource',
+    url: '/admin/permission',
     method: 'post',
     data
   })
 }
 
-// 更新资源
+// 更新权限
 export function updateResource(id, data) {
   return request({
-    url: `/resource/${id}`,
+    url: `/admin/permission/${id}`,
     method: 'put',
     data
   })
 }
 
-// 删除资源
+// 删除权限
 export function deleteResource(id) {
   return request({
-    url: `/resource/${id}`,
+    url: `/admin/permission/${id}`,
     method: 'delete'
   })
 }
 
-// 获取资源详情
+// 获取权限详情
 export function getResourceDetail(id) {
   return request({
-    url: `/resource/${id}`,
-    method: 'get'
-  })
-}
-
-// 获取资源树
-export function getResourceTree() {
-  return request({
-    url: '/resource/tree',
+    url: `/admin/permission/${id}`,
     method: 'get'
   })
 }

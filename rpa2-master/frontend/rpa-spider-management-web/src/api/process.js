@@ -59,3 +59,20 @@ export function updateProcessScripts(id, data) {
     data
   })
 }
+
+// 校验单个 Groovy 脚本语法
+export function validateGroovyScript(data) {
+  return request({
+    url: '/process/validate/groovy',
+    method: 'post',
+    data
+  })
+}
+
+// 校验流程所有环节脚本
+export function validateAllProcessSteps(id) {
+  return request({
+    url: `/process/${id}/validate/all`,
+    method: 'post'
+  })
+}
