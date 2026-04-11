@@ -226,7 +226,8 @@ const formRules = {
 const loadProcessList = async () => {
   try {
     const res = await getProcessList({ page: 1, pageSize: 100, status: 1 })
-    processList.value = res.data.records || []
+    // 兼容两种格式
+    processList.value = res.data.records || res.data.content || []
   } catch (error) {
     console.error('加载流程列表失败:', error)
   }
@@ -253,8 +254,9 @@ const loadData = async () => {
     }
     
     const res = await getTaskList(params)
-    tableData.value = res.data.records || []
-    pagination.total = res.data.total || 0
+    // 后端返回的是 JPA Page 对象格式：content 和 totalElements
+    tableData.value = res.data.content || res.data.records || []
+    pagination.total = res.data.totalElements || res.data.total || 0
   } catch (error) {
     console.error('加载失败:', error)
   } finally {
@@ -303,7 +305,7 @@ const handleCreate = () => {
 
 const handleView = async (row) => {
   try {
-    const res = await getTaskDetail(row.id)
+    const res = await getTaskById(row.id)
     currentRow.value = res.data
     viewDialogVisible.value = true
   } catch (error) {

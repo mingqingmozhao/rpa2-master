@@ -183,6 +183,8 @@
                 <div class="step-actions">
                   <el-button type="primary" size="small" @click="handleEditStep(index)">配置</el-button>
                   <el-button type="info" size="small" @click="handlePreviewStep(index)">预览</el-button>
+                  <el-button type="success" size="small" @click="handleVersionHistory(index)">版本</el-button>
+                  <el-button type="warning" size="small" @click="handlePerformance(index)">性能</el-button>
                 </div>
               </div>
             </template>
@@ -231,31 +233,45 @@
             </el-form-item>
 
             <el-form-item v-if="stepForm.stepType === 'groovy'" label="Groovy 脚本">
-              <el-input
-                v-model="stepForm.code"
-                type="textarea"
-                :rows="25"
-                placeholder="请输入 Groovy 脚本代码"
-                style="font-family: 'Courier New', monospace; font-size: 13px;"
-              />
-              <div style="margin-top: 8px;">
+              <div style="position: relative;">
+                <el-input
+                  v-model="stepForm.code"
+                  type="textarea"
+                  :rows="25"
+                  placeholder="请输入 Groovy 脚本代码"
+                  style="font-family: 'Courier New', monospace; font-size: 13px;"
+                />
+                <div style="position: absolute; top: 0; right: 0; background: #f5f7fa; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #909399;">
+                  字符数：{{ stepForm.code ? stepForm.code.length : 0 }}
+                </div>
+              </div>
+              <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
                 <el-button type="primary" size="small" @click="handleFormatGroovy">格式化代码</el-button>
                 <el-button type="warning" size="small" @click="handleCheckSyntax">语法检查</el-button>
                 <el-button type="info" size="small" @click="handleLoadTemplate">加载模板</el-button>
+                <el-button type="success" size="small" @click="handleCopyCode">复制代码</el-button>
+                <el-button type="danger" size="small" @click="handleClearCode">清空代码</el-button>
               </div>
             </el-form-item>
 
             <el-form-item v-else label="JSON 配置">
-              <el-input
-                v-model="stepForm.jsonConfig"
-                type="textarea"
-                :rows="25"
-                placeholder='请输入 JSON 配置，例如：{"url": "https://api.example.com", "method": "GET"}'
-                style="font-family: 'Courier New', monospace; font-size: 13px;"
-              />
-              <div style="margin-top: 8px;">
+              <div style="position: relative;">
+                <el-input
+                  v-model="stepForm.jsonConfig"
+                  type="textarea"
+                  :rows="25"
+                  placeholder='请输入 JSON 配置，例如：{"url": "https://api.example.com", "method": "GET"}'
+                  style="font-family: 'Courier New', monospace; font-size: 13px;"
+                />
+                <div style="position: absolute; top: 0; right: 0; background: #f5f7fa; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #909399;">
+                  字符数：{{ stepForm.jsonConfig ? stepForm.jsonConfig.length : 0 }}
+                </div>
+              </div>
+              <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
                 <el-button type="primary" size="small" @click="handleFormatJson">格式化 JSON</el-button>
                 <el-button type="warning" size="small" @click="handleValidateJson">JSON 校验</el-button>
+                <el-button type="success" size="small" @click="handleCopyJson">复制 JSON</el-button>
+                <el-button type="danger" size="small" @click="handleClearJson">清空 JSON</el-button>
               </div>
             </el-form-item>
 
@@ -300,9 +316,126 @@
       </div>
       <template #footer>
         <el-button @click="designDialogVisible = false">取消</el-button>
+        <el-button type="info" @click="handleDebug">调试</el-button>
         <el-button type="warning" @click="handleValidateAll">校验所有环节</el-button>
         <el-button type="primary" @click="handleSaveProcessSteps" :loading="savingAll">保存全部配置</el-button>
       </template>
+    </el-dialog>
+
+    <!-- 版本历史组件 -->
+    <VersionHistory 
+      v-model:visible="versionHistoryVisible"
+      :process-id="currentProcessId"
+      :step-type="currentStepType"
+    />
+
+    <!-- 性能监控组件 -->
+    <PerformanceMonitor 
+      v-model:visible="performanceMonitorVisible"
+      :process-id="currentProcessId"
+    />
+
+    <!-- 调试对话框 -->
+    <el-dialog
+      v-model="debugDialogVisible"
+      title="调试功能"
+      width="900px"
+    >
+      <el-alert
+        title="调试功能说明"
+        type="info"
+        :closable="false"
+        style="margin-bottom: 20px;"
+      >
+        <p>调试功能包括：</p>
+        <ul style="margin: 10px 0; padding-left: 20px;">
+          <li><strong>单步执行</strong>：逐步执行每个环节，查看执行结果</li>
+          <li><strong>变量查看</strong>：实时查看变量值和数据结构</li>
+          <li><strong>断点调试</strong>：设置断点，在指定位置暂停执行</li>
+          <li><strong>执行日志</strong>：查看详细的执行日志和错误信息</li>
+        </ul>
+        <el-divider />
+        <p style="color: #E6A23C; font-weight: bold;">注意：调试功能需要后端支持，当前版本为演示模式。</p>
+      </el-alert>
+
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="流程 ID">{{ currentProcessId }}</el-descriptions-item>
+        <el-descriptions-item label="流程名称">{{ currentRow?.processName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="环节数量">4</el-descriptions-item>
+        <el-descriptions-item label="最后执行时间">{{ currentRow?.updateTime || '未执行' }}</el-descriptions-item>
+      </el-descriptions>
+
+      <el-divider />
+
+      <el-steps direction="vertical" :active="3" align-center>
+        <el-step title="采集环节" description="数据采集">
+          <template #icon>
+            <el-tag type="success">已完成</el-tag>
+          </template>
+        </el-step>
+        <el-step title="解析环节" description="数据解析">
+          <template #icon>
+            <el-tag type="success">已完成</el-tag>
+          </template>
+        </el-step>
+        <el-step title="加工环节" description="数据处理">
+          <template #icon>
+            <el-tag type="warning">执行中</el-tag>
+          </template>
+        </el-step>
+        <el-step title="落库环节" description="数据保存">
+          <template #icon>
+            <el-tag>未开始</el-tag>
+          </template>
+        </el-step>
+      </el-steps>
+
+      <el-divider />
+
+      <el-card>
+        <template #header>
+          <div class="card-header">
+            <span>调试控制</span>
+          </div>
+        </template>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <el-button type="primary" size="small">
+            <el-icon><VideoPlay /></el-icon>
+            开始调试
+          </el-button>
+          <el-button type="success" size="small">
+            <el-icon><Right /></el-icon>
+            单步执行
+          </el-button>
+          <el-button type="warning" size="small">
+            <el-icon><VideoPause /></el-icon>
+            暂停
+          </el-button>
+          <el-button type="danger" size="small">
+            <el-icon><Close /></el-icon>
+            停止
+          </el-button>
+          <el-button type="info" size="small">
+            <el-icon><Star /></el-icon>
+            添加断点
+          </el-button>
+        </div>
+      </el-card>
+
+      <el-divider />
+
+      <el-card>
+        <template #header>
+          <div class="card-header">
+            <span>变量监视</span>
+          </div>
+        </template>
+        <el-table :data="debugVariables" border max-height="300">
+          <el-table-column prop="name" label="变量名" width="150" />
+          <el-table-column prop="type" label="类型" width="100" />
+          <el-table-column prop="value" label="值" show-overflow-tooltip />
+        </el-table>
+      </el-card>
     </el-dialog>
   </div>
 </template>
@@ -311,6 +444,8 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getProcessList, deleteProcess, createProcess, updateProcess, getProcessDetail, getProcessScripts, updateProcessScripts, validateGroovyScript, validateAllProcessSteps } from '@/api/process'
+import VersionHistory from './VersionHistory.vue'
+import PerformanceMonitor from './PerformanceMonitor.vue'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -319,6 +454,9 @@ const viewDialogVisible = ref(false)
 const designDialogVisible = ref(false)
 const stepEditDialogVisible = ref(false)
 const previewDialogVisible = ref(false)
+const versionHistoryVisible = ref(false)
+const performanceMonitorVisible = ref(false)
+const debugDialogVisible = ref(false)
 const isEdit = ref(false)
 const submitLoading = ref(false)
 const stepSaving = ref(false)
@@ -326,6 +464,14 @@ const savingAll = ref(false)
 const currentRow = ref(null)
 const currentProcessId = ref(null)
 const currentStepIndex = ref(null)
+const currentStepType = ref('')
+
+// 调试变量数据
+const debugVariables = ref([
+  { name: 'data', type: 'List', value: '[]' },
+  { name: 'result', type: 'Map', value: '{}' },
+  { name: 'count', type: 'Integer', value: '0' }
+])
 
 const searchForm = reactive({
   keyword: '',
@@ -631,8 +777,21 @@ const handleFormatGroovy = () => {
     ElMessage.warning('代码为空')
     return
   }
-  // 简单的格式化：去除多余空行
-  stepForm.code = stepForm.code.replace(/\n\s*\n/g, '\n').trim()
+  
+  // 1. 去除多余空行
+  let formatted = stepForm.code.replace(/\n\s*\n/g, '\n')
+  
+  // 2. 统一缩进（将 Tab 转换为 4 个空格）
+  formatted = formatted.replace(/\t/g, '    ')
+  
+  // 3. 去除行尾空格
+  formatted = formatted.split('\n').map(line => line.trimRight()).join('\n')
+  
+  // 4. 简单的大括号格式化
+  formatted = formatted.replace(/\s*\{\s*/g, ' {\n    ')
+  formatted = formatted.replace(/\s*\}\s*/g, '\n}\n')
+  
+  stepForm.code = formatted.trim()
   ElMessage.success('代码格式化完成')
 }
 
@@ -834,73 +993,554 @@ const handleCheckSyntax = () => {
 
 // 加载模板
 const handleLoadTemplate = () => {
-  const templates = {
-    'collect': `// 采集环节模板
+  const currentType = steps.value[currentStepIndex.value].type
+  
+  // 弹出模板选择对话框
+  ElMessageBox.prompt('请选择模板类型', '加载模板', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    inputType: 'select',
+    inputOptions: [
+      { label: '基础模板（简单示例）', value: 'basic' },
+      { label: 'HTTP 请求模板', value: 'http' },
+      { label: '数据库查询模板', value: 'database' },
+      { label: '文件处理模板', value: 'file' },
+      { label: '异常处理模板', value: 'exception' }
+    ],
+    inputValue: 'basic'
+  }).then(({ value: templateType }) => {
+    const templates = {
+      'collect': {
+        'basic': `// 采集环节 - 基础模板
 def collect() {
-    // HTTP 请求示例
-    def url = "https://api.example.com/data"
-    def params = [page: 1, size: 10]
+    // 在这里编写数据采集逻辑
+    // 可以使用的方法：httpRequest, executeSql, readFile 等
     
-    // 发送请求
+    // 示例：返回固定数据
+    return [
+        [id: 1, name: '测试数据 1', value: 100],
+        [id: 2, name: '测试数据 2', value: 200]
+    ]
+}`,
+        'http': `// 采集环节 - HTTP 请求模板
+def collect() {
+    // HTTP GET 请求示例
+    def url = "https://api.example.com/data"
+    def params = [
+        page: 1,
+        size: 10,
+        keyword: ""
+    ]
+    
+    // 发送请求（假设已有 httpRequest 方法）
     def response = httpRequest(url, params)
     
-    // 返回采集的数据
-    return response.data
+    // 检查响应状态
+    if (response.status == 200) {
+        return response.data?.list ?: []
+    } else {
+        log.error("HTTP 请求失败：" + response.message)
+        return []
+    }
 }`,
-    'parse': `// 解析环节模板
-def parse(data) {
-    // 解析 JSON 数据示例
-    def result = []
+        'database': `// 采集环节 - 数据库查询模板
+def collect() {
+    // SQL 查询示例
+    def sql = """
+        SELECT id, name, value, create_time 
+        FROM source_table 
+        WHERE status = 1 
+        ORDER BY create_time DESC
+        LIMIT 100
+    """
     
-    if (data instanceof List) {
-        data.each { item ->
+    // 执行查询（假设已有 executeSql 方法）
+    def result = executeSql(sql)
+    
+    return result ?: []
+}`,
+        'file': `// 采集环节 - 文件读取模板
+def collect() {
+    // 读取 Excel 文件示例
+    def filePath = "C:/data/input.xlsx"
+    def sheetName = "Sheet1"
+    
+    // 读取 Excel 数据（假设已有 readExcel 方法）
+    def data = readExcel(filePath, sheetName)
+    
+    return data ?: []
+}`,
+        'exception': `// 采集环节 - 异常处理模板
+def collect() {
+    try {
+        // 业务逻辑
+        def url = "https://api.example.com/data"
+        def response = httpRequest(url, [])
+        
+        if (response?.status != 200) {
+            throw new Exception("API 返回状态异常：" + response.status)
+        }
+        
+        return response.data?.list ?: []
+        
+    } catch (Exception e) {
+        log.error("采集过程发生异常：" + e.message, e)
+        // 可以选择抛出异常或返回空数据
+        throw e
+        // 或者：return []
+    }
+}`
+      },
+      'parse': {
+        'basic': `// 解析环节 - 基础模板
+def parse(data) {
+    // 数据解析逻辑
+    // 输入：data（采集环节返回的原始数据）
+    // 输出：解析后的数据结构
+    
+    if (!data) {
+        return []
+    }
+    
+    def result = []
+    data.each { item ->
+        result.add([
+            id: item?.id,
+            name: item?.name ?: '未知',
+            value: item?.value ?: 0,
+            parseTime: new Date()
+        ])
+    }
+    
+    return result
+}`,
+        'http': `// 解析环节 - JSON 解析模板
+def parse(data) {
+    // 解析 JSON 格式数据
+    if (!data) {
+        return []
+    }
+    
+    // 如果是字符串，尝试解析为 JSON
+    def jsonData = data
+    if (data instanceof String) {
+        jsonData = new groovy.json.JsonSlurper().parseText(data)
+    }
+    
+    def result = []
+    if (jsonData instanceof List) {
+        jsonData.each { item ->
             result.add([
-                id: item.id,
-                name: item.name,
-                value: item.value
+                id: item?.id,
+                title: item?.title,
+                content: item?.content,
+                publishTime: item?.publishTime
             ])
         }
     }
     
     return result
 }`,
-    'process': `// 加工环节模板
+        'database': `// 解析环节 - 数据库结果解析模板
+def parse(data) {
+    // 处理数据库查询结果
+    if (!data) {
+        return []
+    }
+    
+    // 数据库查询结果通常是 List<Map> 格式
+    def result = []
+    data.each { row ->
+        result.add([
+            id: row?.id,
+            code: row?.code,
+            name: row?.name,
+            amount: row?.amount?.toDouble() ?: 0.0,
+            createTime: row?.create_time
+        ])
+    }
+    
+    return result
+}`,
+        'file': `// 解析环节 - CSV 文件解析模板
+def parse(data) {
+    // 解析 CSV 格式数据
+    if (!data) {
+        return []
+    }
+    
+    def result = []
+    def lines = data.split('\\n')
+    
+    // 跳过表头（假设第一行是表头）
+    for (int i = 1; i < lines.size(); i++) {
+        def columns = lines[i].split(',')
+        if (columns.size() >= 3) {
+            result.add([
+                code: columns[0]?.trim(),
+                name: columns[1]?.trim(),
+                value: columns[2]?.trim()
+            ])
+        }
+    }
+    
+    return result
+}`,
+        'exception': `// 解析环节 - 异常处理模板
+def parse(data) {
+    try {
+        if (!data) {
+            log.warn("解析数据为空")
+            return []
+        }
+        
+        def result = []
+        data.each { item ->
+            // 数据验证
+            if (!item?.id) {
+                log.warn("跳过缺少 id 的数据：" + item)
+                return
+            }
+            
+            result.add([
+                id: item.id,
+                name: item?.name ?: '未知',
+                value: item?.value ?: 0
+            ])
+        }
+        
+        return result
+        
+    } catch (Exception e) {
+        log.error("解析过程发生异常：" + e.message, e)
+        throw e
+    }
+}`
+      },
+      'process': {
+        'basic': `// 加工环节 - 基础模板
 def process(data) {
-    // 数据转换示例
+    // 数据处理逻辑
+    // 输入：data（解析环节返回的数据）
+    // 输出：处理后的数据
+    
+    if (!data) {
+        return []
+    }
+    
     data.each { item ->
         // 添加计算字段
-        item.total = item.price * item.quantity
+        item.total = (item.price ?: 0) * (item.quantity ?: 0)
         
-        // 数据校验
-        if (!item.name) {
-            throw new Exception("名称不能为空")
-        }
+        // 数据转换
+        item.statusName = item.status == 1 ? '启用' : '停用'
+        
+        // 数据格式化
+        item.createTime = item.createTime ? new Date(item.createTime).format('yyyy-MM-dd HH:mm:ss') : ''
     }
     
     return data
 }`,
-    'save': `// 落库环节模板
-def save(data) {
-    // 批量插入示例
+        'http': `// 加工环节 - 数据转换模板
+def process(data) {
+    // 数据转换和映射
+    if (!data) {
+        return []
+    }
+    
+    def result = []
     data.each { item ->
-        // 构建 SQL
+        // 字段映射
+        def transformed = [
+            externalId: item.id,
+            externalName: item.name,
+            externalValue: item.value,
+            source: 'API',
+            processTime: new Date()
+        ]
+        
+        // 添加校验规则
+        if (!transformed.externalId) {
+            log.error("缺少外部 ID：" + item)
+            continue
+        }
+        
+        result.add(transformed)
+    }
+    
+    return result
+}`,
+        'database': `// 加工环节 - 数据校验模板
+def process(data) {
+    // 数据校验和清洗
+    if (!data) {
+        return []
+    }
+    
+    def validData = []
+    data.each { item ->
+        // 必填字段校验
+        if (!item?.id || !item?.name) {
+            log.warn("数据校验失败，跳过：" + item)
+            continue
+        }
+        
+        // 数据格式校验
+        if (item.value != null && !(item.value instanceof Number)) {
+            log.warn("数值格式错误：" + item.value)
+            continue
+        }
+        
+        // 业务规则校验
+        if (item.value < 0) {
+            log.warn("数值不能为负数：" + item)
+            continue
+        }
+        
+        validData.add(item)
+    }
+    
+    log.info("数据校验完成，原始：${data.size()}, 有效：${validData.size()}")
+    return validData
+}`,
+        'file': `// 加工环节 - 数据合并模板
+def process(data) {
+    // 数据合并和去重
+    if (!data) {
+        return []
+    }
+    
+    // 按 id 去重
+    def uniqueMap = [:]
+    data.each { item ->
+        if (!uniqueMap.containsKey(item.id)) {
+            uniqueMap[item.id] = item
+        } else {
+            // 合并逻辑（如果需要）
+            def existing = uniqueMap[item.id]
+            existing.updateTime = new Date()
+        }
+    }
+    
+    def result = uniqueMap.values().toList()
+    log.info("数据去重完成，原始：${data.size()}, 去重后：${result.size()}")
+    
+    return result
+}`,
+        'exception': `// 加工环节 - 异常处理模板
+def process(data) {
+    try {
+        if (!data) {
+            log.warn("加工数据为空")
+            return []
+        }
+        
+        def processedData = []
+        data.each { item ->
+            try {
+                // 业务处理逻辑
+                item.processed = true
+                item.processTime = new Date()
+                
+                // 计算字段
+                if (item.price && item.quantity) {
+                    item.total = item.price * item.quantity
+                }
+                
+                processedData.add(item)
+                
+            } catch (Exception e) {
+                log.error("处理单条数据失败：" + item, e)
+                // 继续处理其他数据
+            }
+        }
+        
+        log.info("数据加工完成，成功：${processedData.size()}, 失败：${data.size() - processedData.size()}")
+        return processedData
+        
+    } catch (Exception e) {
+        log.error("加工过程发生异常：" + e.message, e)
+        throw e
+    }
+}`
+      },
+      'save': {
+        'basic': `// 落库环节 - 基础模板
+def save(data) {
+    // 数据保存逻辑
+    // 输入：data（加工环节返回的数据）
+    // 输出：保存结果（true/false 或保存的记录数）
+    
+    if (!data) {
+        log.warn("没有需要保存的数据")
+        return 0
+    }
+    
+    def successCount = 0
+    data.each { item ->
+        try {
+            // 构建插入 SQL
+            def sql = """
+                INSERT INTO target_table 
+                (id, name, value, create_time) 
+                VALUES (?, ?, ?, NOW())
+            """
+            
+            // 执行插入（假设已有 executeSql 方法）
+            executeSql(sql, [item.id, item.name, item.value])
+            successCount++
+            
+        } catch (Exception e) {
+            log.error("保存数据失败：" + item, e)
+        }
+    }
+    
+    log.info("数据保存完成，成功：${successCount}, 失败：${data.size() - successCount}")
+    return successCount
+}`,
+        'http': `// 落库环节 - API 推送模板
+def save(data) {
+    // 将数据推送到外部 API
+    if (!data) {
+        return 0
+    }
+    
+    def successCount = 0
+    def apiUrl = "https://api.example.com/receive"
+    
+    data.each { item ->
+        try {
+            def requestBody = new groovy.json.JsonBuilder([
+                id: item.id,
+                name: item.name,
+                value: item.value
+            ]).toString()
+            
+            // 发送 POST 请求（假设已有 httpPost 方法）
+            def response = httpPost(apiUrl, requestBody)
+            
+            if (response?.status == 200) {
+                successCount++
+            } else {
+                log.error("API 推送失败：" + response?.message)
+            }
+            
+        } catch (Exception e) {
+            log.error("推送数据失败：" + item, e)
+        }
+    }
+    
+    return successCount
+}`,
+        'database': `// 落库环节 - 批量插入模板
+def save(data) {
+    // 批量插入数据
+    if (!data) {
+        return 0
+    }
+    
+    try {
+        // 批量插入 SQL
         def sql = """
             INSERT INTO target_table 
             (id, name, value, create_time) 
-            VALUES (?, ?, ?, NOW())
+            VALUES (:id, :name, :value, NOW())
         """
         
-        // 执行插入
-        executeSql(sql, [item.id, item.name, item.value])
+        // 批量执行（假设已有 executeBatchSql 方法）
+        def result = executeBatchSql(sql, data)
+        
+        log.info("批量插入完成，影响行数：" + result)
+        return result
+        
+    } catch (Exception e) {
+        log.error("批量插入失败：" + e.message, e)
+        throw e
+    }
+}`,
+        'file': `// 落库环节 - 文件导出模板
+def save(data) {
+    // 导出数据到文件
+    if (!data) {
+        return 0
     }
     
-    return true
+    try {
+        def filePath = "C:/data/output_${new Date().format('yyyyMMddHHmmss')}.csv"
+        def writer = new FileWriter(filePath)
+        
+        // 写入表头
+        writer.write("id,name,value,create_time\\n")
+        
+        // 写入数据
+        data.each { item ->
+            writer.write("${item.id},${item.name},${item.value},${new Date()}\\n")
+        }
+        
+        writer.close()
+        
+        log.info("文件导出完成：" + filePath)
+        return data.size()
+        
+    } catch (Exception e) {
+        log.error("文件导出失败：" + e.message, e)
+        throw e
+    }
+}`,
+        'exception': `// 落库环节 - 事务处理模板
+def save(data) {
+    // 带事务的数据保存
+    if (!data) {
+        return 0
+    }
+    
+    def transactionStarted = false
+    try {
+        // 开启事务（假设已有 beginTransaction 方法）
+        beginTransaction()
+        transactionStarted = true
+        
+        def successCount = 0
+        data.each { item ->
+            // 保存数据
+            def sql = """
+                INSERT INTO target_table 
+                (id, name, value, create_time) 
+                VALUES (?, ?, ?, NOW())
+            """
+            executeSql(sql, [item.id, item.name, item.value])
+            successCount++
+        }
+        
+        // 提交事务（假设已有 commitTransaction 方法）
+        commitTransaction()
+        
+        log.info("数据保存成功（事务）：" + successCount)
+        return successCount
+        
+    } catch (Exception e) {
+        // 回滚事务（假设已有 rollbackTransaction 方法）
+        if (transactionStarted) {
+            rollbackTransaction()
+        }
+        log.error("数据保存失败，已回滚：" + e.message, e)
+        throw e
+    }
 }`
-  }
-  
-  const currentType = steps.value[currentStepIndex.value].type
-  stepForm.code = templates[currentType] || ''
-  ElMessage.success('模板已加载')
+      }
+    }
+    
+    // 获取对应环节和模板类型的代码
+    const stepTemplates = templates[currentType]
+    if (stepTemplates && stepTemplates[templateType]) {
+      stepForm.code = stepTemplates[templateType]
+      ElMessage.success('模板已加载：' + (templateType == 'basic' ? '基础模板' : templateType == 'http' ? 'HTTP 请求模板' : templateType == 'database' ? '数据库查询模板' : templateType == 'file' ? '文件处理模板' : '异常处理模板'))
+    } else {
+      ElMessage.error('未找到对应模板')
+    }
+  }).catch(() => {
+    // 用户取消
+  })
 }
 
 // 格式化 JSON
@@ -930,6 +1570,66 @@ const handleValidateJson = () => {
   } catch (e) {
     ElMessage.error('JSON 格式错误：' + e.message)
   }
+}
+
+// 复制代码
+const handleCopyCode = async () => {
+  if (!stepForm.code) {
+    ElMessage.warning('代码为空')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(stepForm.code)
+    ElMessage.success('代码已复制到剪贴板')
+  } catch (e) {
+    ElMessage.error('复制失败：' + e.message)
+  }
+}
+
+// 清空代码
+const handleClearCode = () => {
+  if (!stepForm.code) {
+    ElMessage.warning('代码已经为空')
+    return
+  }
+  ElMessageBox.confirm('确定要清空代码吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    stepForm.code = ''
+    ElMessage.success('代码已清空')
+  }).catch(() => {})
+}
+
+// 复制 JSON
+const handleCopyJson = async () => {
+  if (!stepForm.jsonConfig) {
+    ElMessage.warning('JSON 配置为空')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(stepForm.jsonConfig)
+    ElMessage.success('JSON 已复制到剪贴板')
+  } catch (e) {
+    ElMessage.error('复制失败：' + e.message)
+  }
+}
+
+// 清空 JSON
+const handleClearJson = () => {
+  if (!stepForm.jsonConfig) {
+    ElMessage.warning('JSON 配置已经为空')
+    return
+  }
+  ElMessageBox.confirm('确定要清空 JSON 配置吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    stepForm.jsonConfig = ''
+    ElMessage.success('JSON 配置已清空')
+  }).catch(() => {})
 }
 
 const handleSaveStep = async () => {
@@ -1269,6 +1969,25 @@ const handleDelete = (row) => {
       ElMessage.error('删除失败')
     }
   })
+}
+
+// 查看版本历史
+const handleVersionHistory = (index) => {
+  currentStepIndex.value = index
+  currentStepType.value = steps.value[index].type
+  versionHistoryVisible.value = true
+}
+
+// 查看性能监控
+const handlePerformance = (index) => {
+  currentStepIndex.value = index
+  performanceMonitorVisible.value = true
+}
+
+// 调试功能
+const handleDebug = () => {
+  debugDialogVisible.value = true
+  ElMessage.info('调试功能为演示模式，完整功能待后端支持')
 }
 
 const handleSubmit = async () => {

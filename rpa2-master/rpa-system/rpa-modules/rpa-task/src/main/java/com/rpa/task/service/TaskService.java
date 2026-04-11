@@ -1,8 +1,11 @@
 package com.rpa.task.service;
 
 import com.rpa.auth.advice.GlobalExceptionHandler.BusinessException;
+import com.rpa.task.model.TaskExecutionQueue;
 import com.rpa.task.model.TaskInfo;
 import com.rpa.task.repository.TaskInfoRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -11,9 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TaskService {
+    
+    private static final Logger log = LoggerFactory.getLogger(TaskService.class);
 
     @Autowired
     private TaskInfoRepository taskInfoRepository;
+    
+    @Autowired
+    private TaskSchedulerService taskSchedulerService;
 
     @Transactional(readOnly = true)
     public Page<TaskInfo> findAll(String keyword, Long processId, String status, int page, int pageSize) {
@@ -74,7 +82,20 @@ public class TaskService {
     public void executeTask(Long id) {
         TaskInfo task = taskInfoRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("任务不存在"));
-        task.setStatus(2);
-        taskInfoRepository.save(task);
+        
+        // 检查机器人是否已分配
+        if (task.getRobotId() == null) {
+            throw new BusinessException("任务未分配机器人，无法执行");
+        }
+        
+        // 检查流程是否已配置
+        if (task.getProcessId() == null) {
+            throw new BusinessException("任务未关联流程，无法执行");
+        }
+        
+        // 将任务添加到执行队列
+        TaskExecutionQueue queue = taskSchedulerService.addToQueue(task);
+        
+        log.info("任务已添加到执行队列，taskId: {}, queueId: {}", id, queue.getId());
     }
 }

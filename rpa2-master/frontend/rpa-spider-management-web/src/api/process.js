@@ -76,3 +76,46 @@ export function validateAllProcessSteps(id) {
     method: 'post'
   })
 }
+
+// 创建脚本版本
+export function createScriptVersion(id, stepType, changeDescription) {
+  return request({
+    url: `/process/${id}/versions`,
+    method: 'post',
+    params: { stepType, changeDescription }
+  })
+}
+
+// 查询版本历史
+export function getVersionHistory(id, stepType, page, pageSize) {
+  return request({
+    url: `/process/${id}/versions`,
+    method: 'get',
+    params: { stepType, page, pageSize }
+  })
+}
+
+// 获取版本详情
+export function getVersionDetail(versionId) {
+  return request({
+    url: `/process/versions/${versionId}`,
+    method: 'get'
+  })
+}
+
+// 回滚到指定版本
+export function rollbackToVersion(versionId) {
+  return request({
+    url: `/process/versions/${versionId}/rollback`,
+    method: 'post'
+  })
+}
+
+// 版本对比
+export function compareVersions(versionId1, versionId2) {
+  return request({
+    url: '/process/versions/compare',
+    method: 'get',
+    params: { versionId1, versionId2 }
+  })
+}

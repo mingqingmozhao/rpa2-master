@@ -93,3 +93,43 @@ export function updateRobotHeartbeat(id) {
     method: 'post'
   })
 }
+
+/**
+ * 获取机器人监控信息（单个）
+ */
+export function getRobotMonitorById(id) {
+  return request({
+    url: `/robot/${id}/monitor`,
+    method: 'get'
+  })
+}
+
+/**
+ * 获取所有机器人监控信息列表
+ */
+export function getAllMonitorInfo() {
+  return request({
+    url: '/robot/monitor',
+    method: 'get'
+  })
+}
+
+/**
+ * 启动机器人
+ */
+export function startRobot(id) {
+  return request({
+    url: `/robot/${id}/start`,
+    method: 'post'
+  })
+}
+
+/**
+ * 停止机器人
+ */
+export function stopRobot(id) {
+  return request({
+    url: `/robot/${id}/stop`,
+    method: 'post'
+  })
+}

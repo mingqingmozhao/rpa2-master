@@ -20,9 +20,12 @@ public class WebConfig implements WebMvcConfigurer {
     
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 配置静态资源处理器，排除 API 请求
         registry.addResourceHandler("/**")
-                .addResourceLocations("classpath:/static/");
-
+                .addResourceLocations("classpath:/static/")
+                .setCachePeriod(3600)
+                .resourceChain(false); // 禁用资源链，提高性能
+        
         // 配置上传文件访问路径（使用绝对路径）
         String uploadDir = System.getProperty("user.dir") + "/uploads/";
         registry.addResourceHandler("/uploads/**")

@@ -32,6 +32,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String method = request.getMethod();
         String path = request.getRequestURI();
         logger.info("JwtAuthenticationFilter - Processing request: " + method + " " + path);
+        logger.info("JwtAuthenticationFilter - ContextPath: " + request.getContextPath());
+        logger.info("JwtAuthenticationFilter - ServletPath: " + request.getServletPath());
+        
+        // 跳过 WebSocket 请求的认证
+        if (path.contains("/ws-task") || path.contains("/ws-task-stomp") || path.contains("/ws")) {
+            logger.info("JwtAuthenticationFilter - >>>>> Skipping WebSocket request: " + path);
+            chain.doFilter(request, response);
+            return;
+        }
         
         String header = request.getHeader("Authorization");
         String token = null;

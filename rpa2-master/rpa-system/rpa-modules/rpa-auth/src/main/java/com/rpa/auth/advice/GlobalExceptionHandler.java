@@ -81,9 +81,16 @@ public class GlobalExceptionHandler {
     /** 兜底：未归类的所有异常均返回 500 并隐藏内部细节 */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
+        // 打印详细错误日志
+        System.err.println("===== 服务器内部错误 =====");
+        System.err.println("错误消息：" + ex.getMessage());
+        System.err.println("错误类型：" + ex.getClass().getName());
+        ex.printStackTrace(System.err);
+        System.err.println("========================");
+        
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(500, "服务器内部错误"));
+                .body(ApiResponse.error(500, "服务器内部错误：" + ex.getMessage()));
     }
 
     // --- 业务异常类 -----------------------------------------------------------

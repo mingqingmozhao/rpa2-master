@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -28,9 +29,31 @@ public class SecurityConfig {
     
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // 定义 WebSocket 路径
+        List<String> websocketPaths = Arrays.asList(
+            "/ws-task/**",
+            "/ws-task-stomp/**",
+            "/ws/**"
+        );
+        
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(AbstractHttpConfigurer::disable)
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers(
+                    // 放行所有 API 接口的 CSRF 检查（使用 JWT 认证，不需要 CSRF）
+                    new AntPathRequestMatcher("/api/**"),
+                    new AntPathRequestMatcher("/auth/**"),
+                    new AntPathRequestMatcher("/task/**"),
+                    new AntPathRequestMatcher("/robot/**"),
+                    new AntPathRequestMatcher("/process/**"),
+                    new AntPathRequestMatcher("/execution/**"),
+                    new AntPathRequestMatcher("/data/**"),
+                    // 放行 WebSocket 路径
+                    new AntPathRequestMatcher("/ws-task/**"),
+                    new AntPathRequestMatcher("/ws-task-stomp/**"),
+                    new AntPathRequestMatcher("/ws/**")
+                )
+            )
             .sessionManagement(session -> 
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -41,6 +64,8 @@ public class SecurityConfig {
                 // 放行认证接口
                 .requestMatchers("/auth/login", "/auth/register").permitAll()
                 .requestMatchers("/error").permitAll()
+                // 放行 WebSocket 端点
+                .requestMatchers("/ws-task/**", "/ws-task-stomp/**", "/ws/**").permitAll()
                 // 其他所有请求需要认证
                 .anyRequest().authenticated()
             )

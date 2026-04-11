@@ -34,16 +34,22 @@ public class Robot {
     private String type = "UNATTENDED";
     
     /**
-     * 状态：ONLINE(在线) / OFFLINE(离线) / BUSY(忙碌) / FAULT(故障)
+     * 状态：1-在线 2-工作中 3-离线 4-故障
      */
-    @Column(name = "status", nullable = false, length = 20)
-    private String status = "OFFLINE";
+    @Column(name = "status", nullable = false)
+    private Integer status = 3; // 默认离线
     
     /**
      * 机器人 IP 地址
      */
     @Column(name = "ip", length = 50)
     private String ipAddress;
+    
+    /**
+     * 端口
+     */
+    @Column(name = "port")
+    private Integer port = 8080;
     
     /**
      * 最后心跳时间
@@ -135,11 +141,14 @@ public class Robot {
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
     
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
     
     public String getIpAddress() { return ipAddress; }
     public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
+    
+    public Integer getPort() { return port; }
+    public void setPort(Integer port) { this.port = port; }
     
     public LocalDateTime getLastHeartbeat() { return lastHeartbeat; }
     public void setLastHeartbeat(LocalDateTime lastHeartbeat) { this.lastHeartbeat = lastHeartbeat; }

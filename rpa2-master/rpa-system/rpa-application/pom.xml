@@ -40,6 +40,11 @@
             <artifactId>rpa-process</artifactId>
             <version>1.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.rpa</groupId>
+            <artifactId>rpa-robot</artifactId>
+            <version>1.0.0</version>
+        </dependency>
     </dependencies>
 
     <build>

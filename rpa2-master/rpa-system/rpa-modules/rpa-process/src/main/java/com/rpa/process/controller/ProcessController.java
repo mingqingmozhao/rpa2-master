@@ -3,9 +3,11 @@ package com.rpa.process.controller;
 import com.rpa.auth.dto.ApiResponse;
 import com.rpa.process.dto.CreateProcessRequest;
 import com.rpa.process.dto.ProcessDefDTO;
+import com.rpa.process.dto.ProcessScriptVersionDTO;
 import com.rpa.process.dto.UpdateProcessRequest;
 import com.rpa.process.model.ProcessDef;
 import com.rpa.process.service.ProcessDefService;
+import com.rpa.process.service.ProcessScriptVersionService;
 import com.rpa.process.util.GroovySyntaxValidator;
 import com.rpa.process.util.GroovySyntaxValidator.ValidationResult;
 import jakarta.validation.Valid;
@@ -29,6 +31,9 @@ public class ProcessController {
     
     @Autowired
     private ProcessDefService processDefService;
+    
+    @Autowired
+    private ProcessScriptVersionService processScriptVersionService;
     
     @GetMapping("/list")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getProcesses(
@@ -350,6 +355,133 @@ public class ProcessController {
         stepResult.put("message", result.getMessage());
         stepResult.put("errors", result.getErrors());
         return stepResult;
+    }
+    
+    /**
+     * 创建脚本版本
+     */
+    @PostMapping("/{id}/versions")
+    public ResponseEntity<ApiResponse<ProcessScriptVersionDTO>> createVersion(
+            @PathVariable Long id,
+            @RequestParam String stepType,
+            @RequestParam(required = false) String changeDescription) {
+        
+        log.info("创建脚本版本，processId: {}, stepType: {}", id, stepType);
+        
+        try {
+            ProcessDef process = processDefService.getById(id);
+            
+            String scriptContent = "";
+            String scriptType = "groovy";
+            String stepName = "";
+            
+            switch (stepType) {
+                case "collect":
+                    scriptContent = process.getCollectScript() != null ? process.getCollectScript() : "";
+                    stepName = "采集环节";
+                    break;
+                case "parse":
+                    scriptContent = process.getParseScript() != null ? process.getParseScript() : "";
+                    stepName = "解析环节";
+                    break;
+                case "process":
+                    scriptContent = process.getProcessScript() != null ? process.getProcessScript() : "";
+                    stepName = "加工环节";
+                    break;
+                case "save":
+                    scriptContent = process.getSaveScript() != null ? process.getSaveScript() : "";
+                    stepName = "落库环节";
+                    break;
+                default:
+                    throw new IllegalArgumentException("无效的环节类型：" + stepType);
+            }
+            
+            ProcessScriptVersionDTO version = processScriptVersionService.createVersion(
+                id, stepType, stepName, scriptContent, scriptType, changeDescription
+            );
+            
+            return ResponseEntity.ok(ApiResponse.ok(version));
+        } catch (Exception e) {
+            log.error("创建脚本版本失败", e);
+            throw e;
+        }
+    }
+    
+    /**
+     * 查询版本历史
+     */
+    @GetMapping("/{id}/versions")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getVersionHistory(
+            @PathVariable Long id,
+            @RequestParam String stepType,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        
+        log.info("查询版本历史，processId: {}, stepType: {}, page: {}, pageSize: {}", id, stepType, page, pageSize);
+        
+        try {
+            Page<ProcessScriptVersionDTO> versionPage = processScriptVersionService.getVersionHistory(id, stepType, page, pageSize);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("records", versionPage.getContent());
+            result.put("total", versionPage.getTotalElements());
+            
+            return ResponseEntity.ok(ApiResponse.ok(result));
+        } catch (Exception e) {
+            log.error("查询版本历史失败", e);
+            throw e;
+        }
+    }
+    
+    /**
+     * 获取版本详情
+     */
+    @GetMapping("/versions/{versionId}")
+    public ResponseEntity<ApiResponse<ProcessScriptVersionDTO>> getVersionDetail(@PathVariable Long versionId) {
+        log.info("获取版本详情，versionId: {}", versionId);
+        
+        try {
+            ProcessScriptVersionDTO version = processScriptVersionService.getVersionDetail(versionId);
+            return ResponseEntity.ok(ApiResponse.ok(version));
+        } catch (Exception e) {
+            log.error("获取版本详情失败", e);
+            throw e;
+        }
+    }
+    
+    /**
+     * 回滚到指定版本
+     */
+    @PostMapping("/versions/{versionId}/rollback")
+    public ResponseEntity<ApiResponse<ProcessScriptVersionDTO>> rollbackToVersion(@PathVariable Long versionId) {
+        log.info("回滚到指定版本，versionId: {}", versionId);
+        
+        try {
+            ProcessScriptVersionDTO version = processScriptVersionService.rollbackToVersion(versionId);
+            return ResponseEntity.ok(ApiResponse.ok(version));
+        } catch (Exception e) {
+            log.error("回滚版本失败", e);
+            throw e;
+        }
+    }
+    
+    /**
+     * 版本对比
+     */
+    @GetMapping("/versions/compare")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> compareVersions(
+            @RequestParam Long versionId1,
+            @RequestParam Long versionId2) {
+        
+        log.info("版本对比，versionId1: {}, versionId2: {}", versionId1, versionId2);
+        
+        try {
+            Map<String, Object> comparison = processScriptVersionService.compareVersions(versionId1, versionId2);
+            return ResponseEntity.ok(ApiResponse.ok(comparison));
+        } catch (Exception e) {
+            log.error("版本对比失败", e);
+            throw e;
+        }
     }
     
     private ProcessDefDTO convertToDTO(ProcessDef process) {

@@ -37,6 +37,12 @@ const routes = [
         meta: { requiresAuth: true, roles: ['OPERATOR', 'ADMIN'] }
       },
       {
+        path: 'robot/detail/:id',
+        name: 'RobotDetail',
+        component: () => import('@/views/robot/RobotDetail.vue'),
+        meta: { requiresAuth: true, roles: ['OPERATOR', 'ADMIN'] }
+      },
+      {
         path: 'process',
         name: 'Process',
         component: () => import('@/views/process/ProcessList.vue'),
