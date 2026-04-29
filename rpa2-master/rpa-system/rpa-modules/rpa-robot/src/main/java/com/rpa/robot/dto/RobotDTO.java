@@ -19,7 +19,7 @@ public class RobotDTO {
     private String ipAddress;
     private Integer port;
     private LocalDateTime lastHeartbeat;
-    private String department;
+    private String departmentName;
     private Long ownerId;
     private String ownerName;
     private String description;
@@ -45,7 +45,7 @@ public class RobotDTO {
         dto.setIpAddress(robot.getIpAddress());
         dto.setPort(robot.getPort());
         dto.setLastHeartbeat(robot.getLastHeartbeat());
-        dto.setDepartment(robot.getDepartment());
+        dto.setDepartmentName(robot.getDepartmentName());
         dto.setOwnerId(robot.getOwnerId());
         dto.setOwnerName(robot.getOwnerName());
         dto.setDescription(robot.getDescription());
@@ -70,7 +70,7 @@ public class RobotDTO {
         robot.setIpAddress(this.ipAddress);
         robot.setPort(this.port);
         robot.setLastHeartbeat(this.lastHeartbeat);
-        robot.setDepartment(this.department);
+        robot.setDepartmentName(this.departmentName);
         robot.setOwnerId(this.ownerId);
         robot.setOwnerName(this.ownerName);
         robot.setDescription(this.description);
@@ -86,8 +86,8 @@ public class RobotDTO {
         switch (status) {
             case 1: return "ONLINE";
             case 2: return "BUSY";
-            case 0: return "OFFLINE";
-            case -1: return "FAULT";
+            case 3: return "OFFLINE";
+            case 4: return "FAULT";
             default: return "OFFLINE";
         }
     }
@@ -96,13 +96,13 @@ public class RobotDTO {
      * 将字符串状态转换为数字
      */
     private static Integer convertStatusToInteger(String status) {
-        if (status == null) return 0;
+        if (status == null) return 3;
         switch (status) {
             case "ONLINE": return 1;
             case "BUSY": return 2;
-            case "OFFLINE": return 0;
-            case "FAULT": return -1;
-            default: return 0;
+            case "OFFLINE": return 3;
+            case "FAULT": return 4;
+            default: return 3;
         }
     }
 }

@@ -84,7 +84,9 @@ public class ProcessController {
             process.setProcessCode(request.getProcessCode());
             process.setProcessName(request.getProcessName());
             process.setCategory(request.getCategory());
+            process.setVersion(request.getVersion());
             process.setDescription(request.getDescription());
+            process.setRemark(request.getRemark());
             process.setSteps(request.getSteps());
             process.setStatus(request.getStatus());
             process.setCollectScript(request.getCollectScript());
@@ -283,8 +285,10 @@ public class ProcessController {
             boolean allValid = true;
             StringBuilder errorMessage = new StringBuilder();
             
-            // 校验采集环节
-            if (process.getCollectScript() != null && !process.getCollectScript().trim().isEmpty()) {
+            // 校验采集环节（跳过 AI 脚本）
+            if (process.getCollectScript() != null && !process.getCollectScript().trim().isEmpty() 
+                && !process.getCollectScript().trim().startsWith("ai:") 
+                && !process.getCollectScript().trim().startsWith("AI:")) {
                 ValidationResult result = GroovySyntaxValidator.validate(process.getCollectScript());
                 stepResults.put("collect", createStepResult("采集环节", result));
                 if (!result.isValid()) {
@@ -293,8 +297,10 @@ public class ProcessController {
                 }
             }
             
-            // 校验解析环节
-            if (process.getParseScript() != null && !process.getParseScript().trim().isEmpty()) {
+            // 校验解析环节（跳过 AI 脚本）
+            if (process.getParseScript() != null && !process.getParseScript().trim().isEmpty() 
+                && !process.getParseScript().trim().startsWith("ai:") 
+                && !process.getParseScript().trim().startsWith("AI:")) {
                 ValidationResult result = GroovySyntaxValidator.validate(process.getParseScript());
                 stepResults.put("parse", createStepResult("解析环节", result));
                 if (!result.isValid()) {
@@ -303,8 +309,10 @@ public class ProcessController {
                 }
             }
             
-            // 校验加工环节
-            if (process.getProcessScript() != null && !process.getProcessScript().trim().isEmpty()) {
+            // 校验加工环节（跳过 AI 脚本）
+            if (process.getProcessScript() != null && !process.getProcessScript().trim().isEmpty() 
+                && !process.getProcessScript().trim().startsWith("ai:") 
+                && !process.getProcessScript().trim().startsWith("AI:")) {
                 ValidationResult result = GroovySyntaxValidator.validate(process.getProcessScript());
                 stepResults.put("process", createStepResult("加工环节", result));
                 if (!result.isValid()) {
@@ -313,8 +321,10 @@ public class ProcessController {
                 }
             }
             
-            // 校验落库环节
-            if (process.getSaveScript() != null && !process.getSaveScript().trim().isEmpty()) {
+            // 校验落库环节（跳过 AI 脚本）
+            if (process.getSaveScript() != null && !process.getSaveScript().trim().isEmpty() 
+                && !process.getSaveScript().trim().startsWith("ai:") 
+                && !process.getSaveScript().trim().startsWith("AI:")) {
                 ValidationResult result = GroovySyntaxValidator.validate(process.getSaveScript());
                 stepResults.put("save", createStepResult("落库环节", result));
                 if (!result.isValid()) {

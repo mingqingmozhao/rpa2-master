@@ -36,21 +36,22 @@ request.interceptors.response.use(
     // 统一包装：仅当存在 code 字段且不等于 200 时视为业务错误
     if (Object.prototype.hasOwnProperty.call(res, 'code') && res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
-      
+
       // 401: 未授权
       if (res.code === 401) {
         const userStore = useUserStore()
         userStore.logout()
         router.push('/login')
       }
-      
+
       return Promise.reject(new Error(res.message || '请求失败'))
     }
-    
+
     return res
   },
   error => {
     ElMessage.error(error.message || '网络错误')
+    console.error('[Request] Network error:', error)
     return Promise.reject(error)
   }
 )

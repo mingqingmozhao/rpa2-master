@@ -17,7 +17,7 @@ public interface RobotRepository extends JpaRepository<Robot, Long> {
     /**
      * 根据机器人编码查询
      */
-    Optional<Robot> findByRobotCode(String robotCode);
+    Optional<Robot> findByRobotCodeAndIsDeletedFalse(String robotCode);
     
     /**
      * 检查机器人编码是否存在
@@ -51,7 +51,7 @@ public interface RobotRepository extends JpaRepository<Robot, Long> {
     /**
      * 查询离线机器人数量
      */
-    @Query("SELECT COUNT(r) FROM Robot r WHERE r.status = 0 AND r.isDeleted = 0")
+    @Query("SELECT COUNT(r) FROM Robot r WHERE r.status = 3 AND r.isDeleted = 0")
     Long countOfflineRobots();
     
     /**
@@ -63,16 +63,17 @@ public interface RobotRepository extends JpaRepository<Robot, Long> {
     /**
      * 查询故障机器人数量
      */
-    @Query("SELECT COUNT(r) FROM Robot r WHERE r.status = -1 AND r.isDeleted = 0")
+    @Query("SELECT COUNT(r) FROM Robot r WHERE r.status = 4 AND r.isDeleted = 0")
     Long countFaultRobots();
     
     /**
-     * 搜索机器人（支持编码、名称模糊查询）
+     * 搜索机器人（支持编码、名称、部门模糊查询）
      */
     @Query(value = "SELECT * FROM robot_info r WHERE r.is_deleted = 0 AND " +
            "(:keyword IS NULL OR :keyword = '' OR " +
            "r.robot_code LIKE CONCAT('%', :keyword, '%') OR " +
-           "r.robot_name LIKE CONCAT('%', :keyword, '%'))",
+           "r.robot_name LIKE CONCAT('%', :keyword, '%') OR " +
+           "r.department_name LIKE CONCAT('%', :keyword, '%'))",
            nativeQuery = true)
     List<Robot> searchRobots(@Param("keyword") String keyword);
     

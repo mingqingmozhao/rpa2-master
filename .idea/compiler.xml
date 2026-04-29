@@ -7,11 +7,12 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="rpa-application" />
+        <module name="rpa-client" />
         <module name="rpa-task" />
         <module name="rpa-framework" />
         <module name="rpa-process" />
         <module name="rpa-robot" />
-        <module name="rpa-application" />
         <module name="rpa-auth" />
       </profile>
     </annotationProcessing>
@@ -27,6 +28,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="rpa-application" options="-parameters" />
       <module name="rpa-auth" options="-parameters" />
+      <module name="rpa-client" options="-parameters" />
       <module name="rpa-framework" options="-parameters" />
       <module name="rpa-process" options="-parameters" />
       <module name="rpa-robot" options="-parameters" />

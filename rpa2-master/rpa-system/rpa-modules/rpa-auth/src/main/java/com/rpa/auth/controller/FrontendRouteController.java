@@ -1,6 +1,6 @@
 package com.rpa.auth.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -20,9 +20,11 @@ public class FrontendRouteController {
         "/login", "/dashboard",
         "/user-management", "/role-management", "/resource-management",
         "/user-info",
-        "/task", "/execution", "/process",
-        "/data-collection", "/data-parsing", "/data-processing", "/data-query"
-    })
+        "/task", "/execution", "/execution/detail", "/process",
+        "/robot", "/robot/detail/{id}", "/robot/websocket",
+        "/data-collection", "/data-parsing", "/data-processing", "/data-content", "/data-query",
+        "/batch", "/schedule"
+    }, produces = MediaType.TEXT_HTML_VALUE)
     public String forwardToIndex() {
         return "forward:/index.html";
     }

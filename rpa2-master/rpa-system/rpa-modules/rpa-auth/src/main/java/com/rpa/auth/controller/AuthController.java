@@ -122,6 +122,8 @@ public class AuthController {
         userInfo.put("phone", user.getPhone());
         userInfo.put("avatar", user.getAvatar());
         userInfo.put("status", user.getStatus());
+        // 标记是否为演示账号（数据库无此用户时为 true）
+        userInfo.put("isDemo", true);
 
         // 从 SecurityContext authorities（JWT 中解析）提取角色
         if (auth.getAuthorities() != null) {

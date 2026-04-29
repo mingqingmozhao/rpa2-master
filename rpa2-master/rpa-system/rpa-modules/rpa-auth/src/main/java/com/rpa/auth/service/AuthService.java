@@ -8,11 +8,14 @@ import com.rpa.auth.repository.RoleRepository;
 import com.rpa.auth.repository.UserRepository;
 import com.rpa.auth.repository.UserRoleRepository;
 import com.rpa.auth.utils.JwtUtils;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +33,32 @@ public class AuthService {
     private JwtUtils jwtUtils;
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    /**
+     * 启动时确保 admin 用户存在。
+     * 如果数据库里没有 admin，自动创建一个。
+     */
+    @PostConstruct
+    @Transactional
+    public void initAdminUser() {
+        if (userRepository.findByUsername("admin").isEmpty()) {
+            User admin = new User();
+            admin.setUsername("admin");
+            admin.setPassword(passwordEncoder.encode("admin123"));
+            admin.setRealName("系统管理员");
+            admin.setStatus(1);
+            admin.setCreateTime(LocalDateTime.now());
+            User saved = userRepository.save(admin);
+
+            Role adminRole = roleRepository.findByRoleName("ADMIN");
+            if (adminRole != null) {
+                UserRole ur = new UserRole();
+                ur.setUserId(saved.getId());
+                ur.setRoleId(adminRole.getId());
+                userRoleRepository.save(ur);
+            }
+        }
+    }
 
     /**
      * 用户登录。

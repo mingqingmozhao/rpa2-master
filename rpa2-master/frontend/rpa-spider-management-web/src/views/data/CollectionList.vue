@@ -44,19 +44,17 @@
         style="width: 100%"
       >
         <el-table-column type="index" label="序号" width="60" />
-        <el-table-column prop="taskCode" label="任务编码" />
-        <el-table-column prop="taxNo" label="纳税人识别号" />
-        <el-table-column prop="enterpriseName" label="企业名称" />
-        <el-table-column prop="category" label="分类" />
-        <el-table-column prop="dataSource" label="数据来源" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="id" label="采集 ID" width="80" />
+        <el-table-column prop="taskId" label="任务 ID" width="80" />
+        <el-table-column prop="sourceUrl" label="数据来源" show-overflow-tooltip />
+        <el-table-column prop="collectStatus" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'success' ? 'success' : 'danger'" size="small">
-              {{ row.status === 'success' ? '成功' : '失败' }}
+            <el-tag :type="getCollectStatusType(row.collectStatus)" size="small">
+              {{ getCollectStatusLabel(row.collectStatus) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="collectionTime" label="采集时间" />
+        <el-table-column prop="createTime" label="采集时间" width="170" />
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleView(row)">查看详情</el-button>
@@ -83,6 +81,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, Refresh } from '@element-plus/icons-vue'
+import { getCollectionList, deleteCollection, getCollectionById } from '@/api/data'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -107,30 +107,15 @@ const loadData = async () => {
       pageSize: pagination.pageSize,
       taxNo: searchForm.taxNo,
       enterpriseName: searchForm.enterpriseName,
-      status: searchForm.status
+      collectStatus: searchForm.status === 'success' ? 2 : (searchForm.status === 'failed' ? 3 : null)
     }
-    
-    // TODO: 调用 API
-    // const res = await getCollectionList(params)
-    // tableData.value = res.data.records || []
-    // pagination.total = res.data.total || 0
-    
-    // 临时测试数据
-    tableData.value = [
-      {
-        id: 1,
-        taskCode: 'TASK_001',
-        taxNo: '91110000123456789X',
-        enterpriseName: '某某科技有限公司',
-        category: 'A',
-        dataSource: '税务局官网',
-        status: 'success',
-        collectionTime: '2026-03-20 10:00:00'
-      }
-    ]
-    pagination.total = 1
+
+    const res = await getCollectionList(params)
+    tableData.value = res.data.records || []
+    pagination.total = res.data.total || 0
   } catch (error) {
-    console.error('加载失败:', error)
+    console.error('加载数据采集列表失败:', error)
+    ElMessage.error('加载失败')
   } finally {
     loading.value = false
   }
@@ -156,8 +141,29 @@ const handleCurrentChange = () => {
   loadData()
 }
 
-const handleView = (row) => {
-  ElMessage.info('查看详情功能待实现')
+const handleView = async (row) => {
+  try {
+    const res = await getCollectionById(row.id)
+    const data = res.data
+    
+    ElMessageBox.alert(
+      `任务编码：${data.taskCode || '-'}\n` +
+      `数据来源：${data.sourceUrl || '-'}\n` +
+      `采集状态：${getCollectStatusLabel(data.collectStatus)}\n` +
+      `采集时间：${data.createTime || '-'}\n` +
+      (data.errorMessage ? `\n错误信息：${data.errorMessage}` : ''),
+      '采集记录详情',
+      {
+        confirmButtonText: '关闭',
+        customStyle: {
+          whiteSpace: 'pre-line'
+        }
+      }
+    )
+  } catch (error) {
+    console.error('获取详情失败:', error)
+    ElMessage.error('获取详情失败')
+  }
 }
 
 const handleDelete = (row) => {
@@ -167,14 +173,34 @@ const handleDelete = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
-      // TODO: 调用删除 API
-      // await deleteCollection(row.id)
+      await deleteCollection(row.id)
       ElMessage.success('删除成功')
       loadData()
     } catch (error) {
       console.error('删除失败:', error)
+      ElMessage.error('删除失败')
     }
   })
+}
+
+const getCollectStatusLabel = (status) => {
+  const map = {
+    0: '待采集',
+    1: '采集中',
+    2: '采集成功',
+    3: '采集失败'
+  }
+  return map[status] || '未知'
+}
+
+const getCollectStatusType = (status) => {
+  const map = {
+    0: 'info',
+    1: 'warning',
+    2: 'success',
+    3: 'danger'
+  }
+  return map[status] || 'info'
 }
 
 onMounted(() => {
@@ -192,6 +218,10 @@ onMounted(() => {
   
   .search-form {
     margin-bottom: 20px;
+
+    :deep(.el-select) {
+      width: 180px;
+    }
   }
 }
 </style>

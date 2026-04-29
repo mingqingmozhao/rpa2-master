@@ -133,3 +133,23 @@ export function stopRobot(id) {
     method: 'post'
   })
 }
+
+/**
+ * 重启机器人连接
+ */
+export function restartRobot(id) {
+  return request({
+    url: `/robot/${id}/restart`,
+    method: 'post'
+  })
+}
+
+/**
+ * 获取机器人连接状态
+ */
+export function getRobotConnectionStatus(id) {
+  return request({
+    url: `/robot/${id}/connection`,
+    method: 'get'
+  })
+}

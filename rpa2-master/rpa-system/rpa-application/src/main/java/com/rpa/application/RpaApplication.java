@@ -11,19 +11,23 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.rpa.auth",
     "com.rpa.task",
     "com.rpa.process",
-    "com.rpa.robot"
+    "com.rpa.robot",
+    "com.rpa.client",
+    "com.rpa.application.listener"
 })
 @EnableJpaRepositories(basePackages = {
     "com.rpa.auth.repository",
     "com.rpa.task.repository",
     "com.rpa.process.repository",
-    "com.rpa.robot.repository"
+    "com.rpa.robot.repository",
+    "com.rpa.client.repository"
 })
 @EntityScan(basePackages = {
     "com.rpa.auth.model",
     "com.rpa.task.model",
     "com.rpa.process.model",
-    "com.rpa.robot.model"
+    "com.rpa.robot.model",
+    "com.rpa.client.model"
 })
 @EnableScheduling // 启用定时任务调度
 public class RpaApplication {

@@ -22,9 +22,6 @@ public class TaskInfo {
     
     @Column(name = "robot_id")
     private Long robotId;
-    
-    @Column(name = "company_name", length = 100)
-    private String companyName;
 
     @Column(name = "enterprise_name", length = 100)
     private String enterpriseName;
@@ -55,6 +52,12 @@ public class TaskInfo {
     @Column(name = "is_deleted")
     private Integer isDeleted = 0;
     
+    @Column(name = "is_disabled")
+    private Integer isDisabled = 0;
+    
+    @Column(name = "last_execution_id")
+    private Long lastExecutionId;
+    
     @PrePersist
     protected void onCreate() {
         createTime = LocalDateTime.now();
@@ -82,9 +85,6 @@ public class TaskInfo {
     public Long getRobotId() { return robotId; }
     public void setRobotId(Long robotId) { this.robotId = robotId; }
     
-    public String getCompanyName() { return companyName; }
-    public void setCompanyName(String companyName) { this.companyName = companyName; }
-
     public String getEnterpriseName() { return enterpriseName; }
     public void setEnterpriseName(String enterpriseName) { this.enterpriseName = enterpriseName; }
 
@@ -114,4 +114,10 @@ public class TaskInfo {
 
     public Integer getIsDeleted() { return isDeleted; }
     public void setIsDeleted(Integer isDeleted) { this.isDeleted = isDeleted; }
+    
+    public Integer getIsDisabled() { return isDisabled; }
+    public void setIsDisabled(Integer isDisabled) { this.isDisabled = isDisabled; }
+    
+    public Long getLastExecutionId() { return lastExecutionId; }
+    public void setLastExecutionId(Long lastExecutionId) { this.lastExecutionId = lastExecutionId; }
 }

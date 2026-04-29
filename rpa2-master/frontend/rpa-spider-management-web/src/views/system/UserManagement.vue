@@ -249,8 +249,10 @@ const loadData = async () => {
     }
 
     const res = await getUserList(params)
-    tableData.value = res.data.records || res.data?.content || []
-    pagination.total = res.data.total || 0
+    // Spring Data Page 序列化后是 { content: [...], totalElements, totalPages, ... }
+    const pageData = res.data
+    tableData.value = pageData?.content || pageData?.records || []
+    pagination.total = pageData?.totalElements || pageData?.total || 0
   } catch (error) {
     console.error('加载失败:', error)
     ElMessage.error('加载数据失败')
@@ -485,6 +487,10 @@ onMounted(() => {
   
   .search-form {
     margin-bottom: 20px;
+
+    :deep(.el-select) {
+      width: 180px;
+    }
   }
 }
 </style>

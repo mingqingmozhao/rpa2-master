@@ -15,7 +15,4 @@ ALTER TABLE task_info ADD COLUMN IF NOT EXISTS enterprise_name VARCHAR(100) COMM
 -- 添加 tax_no 列（如果不存在）
 ALTER TABLE task_info ADD COLUMN IF NOT EXISTS tax_no VARCHAR(20) COMMENT '税号';
 
--- 添加 company_name 列（如果不存在）
-ALTER TABLE task_info ADD COLUMN IF NOT EXISTS company_name VARCHAR(100) COMMENT '公司名称';
-
 SELECT '表结构修复完成！' AS result;

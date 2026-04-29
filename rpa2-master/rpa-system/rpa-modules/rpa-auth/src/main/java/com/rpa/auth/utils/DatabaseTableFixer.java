@@ -79,19 +79,7 @@ public class DatabaseTableFixer {
                     }
                 }
                 
-                // 添加 company_name 列
-                try {
-                    stmt.executeUpdate("ALTER TABLE task_info ADD COLUMN company_name VARCHAR(100) COMMENT '公司名称'");
-                    System.out.println("✓ 添加 company_name 列成功");
-                } catch (Exception e) {
-                    if (e.getMessage().contains("Duplicate column name")) {
-                        System.out.println("✓ company_name 列已存在");
-                    } else {
-                        System.out.println("✗ 添加 company_name 列失败：" + e.getMessage());
-                    }
-                }
-                
-                System.out.println("\n表结构修复完成！");
+System.out.println("\n表结构修复完成！");
             }
             
         } catch (Exception e) {

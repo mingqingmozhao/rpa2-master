@@ -58,16 +58,10 @@ public class Robot {
     private LocalDateTime lastHeartbeat;
     
     /**
-     * 所属部门 ID
-     */
-    @Column(name = "department_id")
-    private Long departmentId;
-    
-    /**
      * 所属部门名称
      */
-    @Transient
-    private String department;
+    @Column(name = "department_name", length = 100)
+    private String departmentName;
     
     /**
      * 负责人 ID
@@ -153,8 +147,8 @@ public class Robot {
     public LocalDateTime getLastHeartbeat() { return lastHeartbeat; }
     public void setLastHeartbeat(LocalDateTime lastHeartbeat) { this.lastHeartbeat = lastHeartbeat; }
     
-    public String getDepartment() { return department; }
-    public void setDepartment(String department) { this.department = department; }
+    public String getDepartmentName() { return departmentName; }
+    public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
     
     public Long getOwnerId() { return ownerId; }
     public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }

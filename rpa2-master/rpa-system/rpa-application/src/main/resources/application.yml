@@ -1,5 +1,13 @@
 server:
   port: 8080
+  tomcat:
+    max-swallow-size: -1
+    max-http-form-post-size: -1
+  servlet:
+    context-path:
+  websocket:
+    max-text-message-size: 10485760
+    max-binary-message-size: 10485760
 
 spring:
   application:
@@ -23,8 +31,10 @@ spring:
         format_sql: true
     database-platform: org.hibernate.dialect.MySQLDialect
   sql:
-    init:
-      mode: never
+    init: never
+    jackson:
+      time-zone: Asia/Shanghai
+      date-format: yyyy-MM-dd HH:mm:ss
 
 # 文件上传配置
 file:
@@ -34,3 +44,59 @@ file:
 jwt:
   secret: default-secret-key-for-development-only-must-be-long-enough
   expiration: 86400000
+
+# RPA 混合模式Java客户端配置
+hybrid:
+  client:
+    enabled: true                        # 是否启用混合模式客户端
+    path: ../rpa-robot-client           # Java客户端目录
+    count: 3                            # 客户端数量
+    robot-per-client: 8                 # 每个客户端的机器人数量
+    startup-delay: 2000                 # 启动间隔（毫秒）
+
+# Java 机器人客户端配置
+robot:
+  client:
+    enabled: true                     # 启用机器人客户端
+    auto-start: true                  # 应用启动时自动启动机器人客户端
+    robot-code: rel                   # 机器人编码
+    robot-name: rel Robot             # 机器人名称
+    scheduler-api-url: http://localhost:8080  # 调度中心 API 地址
+    scheduler-ws-url: ws://localhost:8080/ws-task  # WebSocket 地址
+    heartbeat-interval: 10            # 心跳间隔（秒）
+    path: C:/Users/曹文武/Desktop/rpa2-master/rpa2-master/rpa-robot-client  # 机器人客户端路径（绝对路径）
+    jar-name: rpa-robot-client-1.0.0.jar  # JAR 文件名
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.rpa.task: DEBUG  # 将任务调度相关日志设置为 DEBUG 级别
+    com.rpa.robot: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  # 如果需要保存到文件，取消下面的注释
+  # file:
+  #   name: logs/rpa-system.log
+
+# =====================================
+# AI 配置 (通义千问 Plus) - 可选功能
+# =====================================
+ai:
+  dashscope:
+    # 是否启用 AI 解析 (默认 false，不影响现有功能)
+    enabled: true
+    
+    # API Key (从阿里云 DashScope 控制台获取)
+    # 获取地址：https://dashscope.console.aliyun.com/
+    api-key: sk-1b9a2d8b299f4e2e9437d73062c9cf2b
+    
+    # 模型名称 - 使用 qwen-plus (通义千问Plus) 适合文本处理
+    # 可选: qwen-turbo (快速), qwen-plus (平衡), qwen-max (最强)
+    model: qwen-plus
+    
+    # 超时时间 (毫秒)
+    timeout: 60000
+    
+    # 最大重试次数
+    max-retries: 2

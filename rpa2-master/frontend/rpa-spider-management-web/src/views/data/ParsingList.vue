@@ -16,18 +16,22 @@
       
       <el-table v-loading="loading" :data="tableData" border>
         <el-table-column type="index" label="序号" width="60" />
-        <el-table-column prop="taskCode" label="任务编码" />
-        <el-table-column prop="parsedData" label="解析数据" show-overflow-tooltip />
-        <el-table-column prop="fieldCount" label="字段数" width="80" />
-        <el-table-column prop="parsingRule" label="解析规则" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="id" label="解析 ID" width="80" />
+        <el-table-column prop="collectionId" label="采集 ID" width="80" />
+        <el-table-column prop="parsedData" label="解析数据" show-overflow-tooltip min-width="200" />
+        <el-table-column prop="parseStatus" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'parsed' ? 'success' : 'warning'" size="small">
-              {{ row.status === 'parsed' ? '已解析' : '失败' }}
+            <el-tag :type="getParseStatusType(row.parseStatus)" size="small">
+              {{ getParseStatusLabel(row.parseStatus) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="parsingTime" label="解析时间" />
+        <el-table-column prop="createTime" label="解析时间" width="170" />
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="handleView(row)">查看详情</el-button>
+          </template>
+        </el-table-column>
       </el-table>
       
       <el-pagination
@@ -45,24 +49,96 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getParsedList, getParsedById } from '@/api/data'
 
 const loading = ref(false)
 const tableData = ref([])
 const searchForm = reactive({ taskCode: '' })
 const pagination = reactive({ page: 1, pageSize: 10, total: 0 })
 
-const loadData = () => {
-  // TODO: 实现 API 调用
-  tableData.value = [
-    { id: 1, taskCode: 'TASK_001', parsedData: '{"data": "test"}', fieldCount: 5, parsingRule: 'rule1', status: 'parsed', parsingTime: '2026-03-20 10:00:00' }
-  ]
+const loadData = async () => {
+  loading.value = true
+  try {
+    const params = {
+      page: pagination.page,
+      pageSize: pagination.pageSize
+      // 移除 taskCode 参数 - 后端接收的是 taskId (Long)，不是 taskCode (String)
+    }
+    
+    const res = await getParsedList(params)
+    tableData.value = res.data.records || []
+    pagination.total = res.data.total || 0
+  } catch (error) {
+    console.error('加载失败:', error)
+    ElMessage.error('加载失败')
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleSearch = () => { loadData() }
-const handleSizeChange = () => { loadData() }
-const handleCurrentChange = () => { loadData() }
+const handleSearch = () => {
+  pagination.page = 1
+  loadData()
+}
 
-onMounted(() => { loadData() })
+const handleSizeChange = () => {
+  loadData()
+}
+
+const handleCurrentChange = () => {
+  loadData()
+}
+
+const handleView = async (row) => {
+  try {
+    const res = await getParsedById(row.id)
+    const data = res.data
+    
+    ElMessageBox.alert(
+      `解析 ID: ${data.id || '-'}\n` +
+      `采集 ID: ${data.collectionId || '-'}\n` +
+      `解析状态：${getParseStatusLabel(data.parseStatus)}\n` +
+      `解析时间：${data.createTime || '-'}\n` +
+      (data.errorMessage ? `\n错误信息：${data.errorMessage}` : '') +
+      `\n\n解析数据:\n${data.parsedData || '无'}`,
+      '解析记录详情',
+      {
+        confirmButtonText: '关闭',
+        customStyle: {
+          whiteSpace: 'pre-line'
+        }
+      }
+    )
+  } catch (error) {
+    console.error('获取详情失败:', error)
+    ElMessage.error('获取详情失败')
+  }
+}
+
+const getParseStatusLabel = (status) => {
+  const map = {
+    0: '待解析',
+    1: '解析中',
+    2: '解析成功',
+    3: '解析失败'
+  }
+  return map[status] || '未知'
+}
+
+const getParseStatusType = (status) => {
+  const map = {
+    0: 'info',
+    1: 'warning',
+    2: 'success',
+    3: 'danger'
+  }
+  return map[status] || 'info'
+}
+
+onMounted(() => {
+  loadData()
+})
 </script>
 
 <style scoped lang="scss">

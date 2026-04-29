@@ -3,7 +3,7 @@
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="stats-row">
       <el-col :span="6">
-        <el-card class="stat-card" shadow="hover">
+        <el-card class="stat-card" shadow="hover" @click="goToTaskList">
           <div class="stat-content">
             <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
               <el-icon :size="40"><Document /></el-icon>
@@ -21,7 +21,7 @@
       </el-col>
       
       <el-col :span="6">
-        <el-card class="stat-card" shadow="hover">
+        <el-card class="stat-card" shadow="hover" @click="goToRobotList">
           <div class="stat-content">
             <div class="stat-icon" style="background: linear-gradient(135deg, #f687b3 0%, #f093fb 100%);">
               <el-icon :size="40"><VideoCamera /></el-icon>
@@ -39,7 +39,7 @@
       </el-col>
       
       <el-col :span="6">
-        <el-card class="stat-card" shadow="hover">
+        <el-card class="stat-card" shadow="hover" @click="goToProcessList">
           <div class="stat-content">
             <div class="stat-icon" style="background: linear-gradient(135deg, #4fd1c5 0%, #81e6d9 100%);">
               <el-icon :size="40"><Connection /></el-icon>
@@ -57,7 +57,7 @@
       </el-col>
       
       <el-col :span="6">
-        <el-card class="stat-card" shadow="hover">
+        <el-card class="stat-card" shadow="hover" @click="goToDataList">
           <div class="stat-content">
             <div class="stat-icon" style="background: linear-gradient(135deg, #68d391 0%, #c6f68d 100%);">
               <el-icon :size="40"><DataLine /></el-icon>
@@ -82,40 +82,15 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">任务状态概览</span>
-              <el-link type="primary" @click="goToTaskList">查看详情 <el-icon><ArrowRight /></el-icon></el-link>
+              <el-link type="primary" @click="goToExecution">查看详情 <el-icon><ArrowRight /></el-icon></el-link>
             </div>
           </template>
           
-          <div class="status-chart">
-            <div class="status-item">
-              <div class="status-dot" style="background: #ed8936;"></div>
-              <div class="status-text">
-                <span class="status-value">{{ taskStatus.running }}</span>
-                <span class="status-label">运行中</span>
-              </div>
-            </div>
-            <div class="status-item">
-              <div class="status-dot" style="background: #a0aec0;"></div>
-              <div class="status-text">
-                <span class="status-value">{{ taskStatus.pending }}</span>
-                <span class="status-label">待执行</span>
-              </div>
-            </div>
-            <div class="status-item">
-              <div class="status-dot" style="background: #48bb78;"></div>
-              <div class="status-text">
-                <span class="status-value">{{ taskStatus.completed }}</span>
-                <span class="status-label">已完成</span>
-              </div>
-            </div>
-            <div class="status-item">
-              <div class="status-dot" style="background: #f56565;"></div>
-              <div class="status-text">
-                <span class="status-value">{{ taskStatus.failed }}</span>
-                <span class="status-label">失败</span>
-              </div>
-            </div>
-          </div>
+          <v-chart
+            class="trend-chart"
+            :option="trendOption"
+            :autoresize="true"
+          />
         </el-card>
       </el-col>
       
@@ -156,13 +131,13 @@
               </div>
             </div>
             
-            <div class="quick-item" @click="goToDataQuery">
+            <div class="quick-item" @click="goToUserProfile">
               <div class="quick-icon" style="background: linear-gradient(135deg, #63b3ed 0%, #90cdf4 100%);">
-                <el-icon><Document /></el-icon>
+                <el-icon><User /></el-icon>
               </div>
               <div class="quick-info">
-                <div class="quick-title">数据查询</div>
-                <div class="quick-desc">查看已处理的数据</div>
+                <div class="quick-title">个人信息</div>
+                <div class="quick-desc">查看和编辑个人信息</div>
               </div>
             </div>
           </div>
@@ -184,7 +159,7 @@
           <el-table :data="recentTasks" style="width: 100%" :header-cell-style="{background:'#f5f7fa',color:'#606266'}">
             <el-table-column prop="taskCode" label="任务编码" />
             <el-table-column prop="taskName" label="任务名称" show-overflow-tooltip />
-            <el-table-column prop="companyName" label="企业名称" show-overflow-tooltip />
+            <el-table-column prop="enterpriseName" label="企业名称" show-overflow-tooltip />
             <el-table-column prop="status" label="状态" width="100">
               <template #default="{ row }">
                 <el-tag :type="getStatusType(row.status)" size="small" effect="plain">{{ getStatusLabel(row.status) }}</el-tag>
@@ -199,12 +174,20 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Document, VideoCamera, Connection, DataLine, Top, Check, Download, ArrowRight, Plus } from '@element-plus/icons-vue'
+import { Document, VideoCamera, Connection, DataLine, Top, Check, Download, ArrowRight, Plus, User } from '@element-plus/icons-vue'
+import VChart from 'vue-echarts'
+import { use } from 'echarts/core'
+import { BarChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
 import { getTaskList } from '@/api/task'
 import { getRobotList } from '@/api/robot'
 import { getProcessList } from '@/api/process'
+import request from '@/utils/request'
+
+use([BarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
 const router = useRouter()
 
@@ -226,7 +209,57 @@ const taskStatus = reactive({
   failed: 0
 })
 
+const trendOption = computed(() => ({
+  tooltip: {
+    trigger: 'axis',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderColor: '#e8e8e8',
+    borderWidth: 1,
+    textStyle: { color: '#2d3748', fontSize: 13 },
+    axisPointer: { type: 'cross', crossStyle: { color: '#ddd' } }
+  },
+  legend: {
+    data: ['任务数'],
+    bottom: 0,
+    textStyle: { color: '#718096', fontSize: 12 }
+  },
+  grid: {
+    left: '3%',
+    right: '4%',
+    top: '10%',
+    bottom: '18%',
+    containLabel: true
+  },
+  xAxis: {
+    type: 'category',
+    data: ['待执行', '运行中', '已完成', '失败'],
+    axisLine: { lineStyle: { color: '#e8e8e8' } },
+    axisLabel: { color: '#718096', fontSize: 12 }
+  },
+  yAxis: {
+    type: 'value',
+    min: 0,
+    splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
+    axisLine: { show: false },
+    axisLabel: { color: '#718096', fontSize: 12 }
+  },
+  series: [
+    {
+      name: '任务数',
+      type: 'bar',
+      barWidth: 36,
+      itemStyle: {
+        borderRadius: [6, 6, 0, 0],
+        color: (params) => ['#909399', '#e6a23c', '#67c23a', '#f56c6c'][params.dataIndex]
+      },
+      data: [taskStatus.pending, taskStatus.running, taskStatus.completed, taskStatus.failed]
+    }
+  ]
+}))
+
 const recentTasks = ref([])
+let statsTimer = null
+let recentTasksTimer = null
 
 // 格式化大数字
 const formatNumber = (num) => {
@@ -243,12 +276,15 @@ const formatNumber = (num) => {
 // 获取状态标签
 const getStatusLabel = (status) => {
   const map = {
-    1: '正常',
-    0: '停用',
-    'running': '运行中',
-    'completed': '已完成',
-    'pending': '待执行',
-    'failed': '失败'
+    1: '待执行',
+    2: '运行中',
+    3: '已完成',
+    4: '失败',
+    'PENDING': '待执行',
+    'RUNNING': '运行中',
+    'COMPLETED': '已完成',
+    'FAILED': '失败',
+    'QUEUED': '排队中'
   }
   return map[status] || '未知'
 }
@@ -270,25 +306,19 @@ const loadStats = async () => {
     }) || []
     stats.todayTasks = todayTasks.length
     
-    // 加载任务状态统计
-    const [runningRes, pendingRes, completedRes, failedRes] = await Promise.all([
-      getTaskList({ page: 1, pageSize: 1, status: 1 }),
-      getTaskList({ page: 1, pageSize: 1, status: 0 }),
-      getTaskList({ page: 1, pageSize: 1, status: 2 }),
-      getTaskList({ page: 1, pageSize: 1, status: 3 })
-    ])
-    
-    taskStatus.running = runningRes.data.total || 0
-    taskStatus.pending = pendingRes.data.total || 0
-    taskStatus.completed = completedRes.data.total || 0
-    taskStatus.failed = failedRes.data.total || 0
+    // 加载任务状态统计，保持和任务列表使用同一张任务表
+    const statusStatsRes = await request.get('/api/task/status-stats')
+    taskStatus.running = statusStatsRes.running || 0
+    taskStatus.pending = statusStatsRes.pending || 0
+    taskStatus.completed = statusStatsRes.completed || 0
+    taskStatus.failed = statusStatsRes.failed || 0
     
     console.log('任务状态统计:', taskStatus)
     
     // 加载机器人统计
     const robotRes = await getRobotList({ page: 1, pageSize: 100 })
     stats.totalRobots = robotRes.data.total || 0
-    stats.onlineRobots = robotRes.data.records?.filter(r => r.status === 1 || r.status === 2).length || 0
+    stats.onlineRobots = robotRes.data.records?.filter(r => r.status === 'ONLINE' || r.status === 'BUSY').length || 0
     
     console.log('机器人统计:', stats.totalRobots, '在线:', stats.onlineRobots)
     
@@ -299,9 +329,10 @@ const loadStats = async () => {
     
     console.log('流程统计:', stats.totalProcesses, '启用:', stats.enabledProcesses)
     
-    // 数据总量（暂时用任务数代替，实际应该查询数据表）
-    stats.totalData = stats.totalTasks * 100 + 12580
-    stats.todayData = stats.todayTasks * 10 + 156
+    // 加载数据产品统计
+    const dataStatsRes = await request.get('/api/data/stats')
+    stats.totalData = dataStatsRes.total || 0
+    stats.todayData = dataStatsRes.todayCollected || 0
     
     console.log('统计数据加载完成')
   } catch (error) {
@@ -312,16 +343,24 @@ const loadStats = async () => {
 // 加载最近任务
 const loadRecentTasks = async () => {
   try {
-    const res = await getTaskList({ page: 1, pageSize: 5 })
-    recentTasks.value = res.data.records?.map(item => ({
-      ...item,
-      taskCode: item.taskCode || '-',
-      taskName: item.taskName || '未命名任务',
-      companyName: item.companyName || '-',
-      status: item.status,
-      createTime: formatTime(item.createTime)
-    })) || []
-    
+    const res = await getTaskList({ page: 1, pageSize: 50 })
+    const records = res.data?.records || res.data?.content || []
+
+    recentTasks.value = records
+      .map(item => {
+        const rawCreateTime = item.createTime || item.create_time
+        return {
+          taskCode: item.taskCode || item.task_code || '-',
+          taskName: item.taskName || item.task_name || '未命名任务',
+          enterpriseName: item.enterpriseName || item.enterprise_name || '-',
+          status: item.status,
+          rawCreateTime,
+          createTime: formatTime(rawCreateTime)
+        }
+      })
+      .sort((a, b) => parseTime(b.rawCreateTime) - parseTime(a.rawCreateTime))
+      .slice(0, 5)
+
     console.log('最近任务:', recentTasks.value)
   } catch (error) {
     console.error('加载最近任务失败:', error)
@@ -331,7 +370,8 @@ const loadRecentTasks = async () => {
 // 格式化时间
 const formatTime = (time) => {
   if (!time) return '-'
-  const date = new Date(time)
+  const date = new Date(String(time).replace(' ', 'T'))
+  if (Number.isNaN(date.getTime())) return '-'
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
@@ -340,9 +380,19 @@ const formatTime = (time) => {
   return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
+const parseTime = (time) => {
+  if (!time) return 0
+  const date = new Date(String(time).replace(' ', 'T'))
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime()
+}
+
 // 跳转函数
 const goToTaskList = () => {
   router.push('/task')
+}
+
+const goToExecution = () => {
+  router.push('/execution')
 }
 
 const goToCreateTask = () => {
@@ -357,18 +407,25 @@ const goToRobotList = () => {
   router.push('/robot')
 }
 
-const goToDataQuery = () => {
+const goToDataList = () => {
   router.push('/data-query')
+}
+
+const goToUserProfile = () => {
+  router.push('/user-info')
 }
 
 const getStatusType = (status) => {
   const map = {
-    1: 'success',  // 正常
-    0: 'info',     // 停用
-    'running': 'warning',
-    'completed': 'success',
-    'pending': 'info',
-    'failed': 'danger'
+    1: 'info',      // 待执行
+    2: 'warning',   // 运行中
+    3: 'success',   // 已完成
+    4: 'danger',    // 失败
+    'PENDING': 'info',
+    'RUNNING': 'warning',
+    'COMPLETED': 'success',
+    'FAILED': 'danger',
+    'QUEUED': 'info'
   }
   return map[status] || 'info'
 }
@@ -376,6 +433,18 @@ const getStatusType = (status) => {
 onMounted(() => {
   loadStats()
   loadRecentTasks()
+
+  statsTimer = setInterval(loadStats, 5000)
+  recentTasksTimer = setInterval(loadRecentTasks, 10000)
+})
+
+onBeforeUnmount(() => {
+  if (statsTimer) {
+    clearInterval(statsTimer)
+  }
+  if (recentTasksTimer) {
+    clearInterval(recentTasksTimer)
+  }
 })
 </script>
 
@@ -389,6 +458,7 @@ onMounted(() => {
     .stat-card {
       border-radius: 12px;
       transition: all 0.3s ease;
+      cursor: pointer;
       
       &:hover {
         transform: translateY(-4px);
@@ -459,41 +529,10 @@ onMounted(() => {
     
     .status-card {
       border-radius: 12px;
-      
-      .status-chart {
-        display: flex;
-        justify-content: space-around;
-        padding: 20px 0;
-        
-        .status-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          
-          .status-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            flex-shrink: 0;
-          }
-          
-          .status-text {
-            display: flex;
-            flex-direction: column;
-            
-            .status-value {
-              font-size: 28px;
-              font-weight: 700;
-              color: #2d3748;
-            }
-            
-            .status-label {
-              font-size: 14px;
-              color: #718096;
-              margin-top: 4px;
-            }
-          }
-        }
+
+      .trend-chart {
+        width: 100%;
+        height: 280px;
       }
     }
     

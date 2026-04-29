@@ -138,7 +138,7 @@ INSERT INTO robot_info (robot_code, robot_name, robot_type, ip, port, execute_th
 ('ROBOT_006', 'Windows 机器人 4 号', 'Windows', '192.168.1.106', 8081, 'thread-proc-06', 1, 18.00, 38.00, DATE_SUB(NOW(), INTERVAL 1 MINUTE));
 
 -- ===================== 8. 初始化任务数据 =====================
-INSERT INTO task_info (task_code, task_name, process_id, robot_id, company_name, tax_no, status, create_user, create_time) VALUES
+INSERT INTO task_info (task_code, task_name, process_id, robot_id, enterprise_name, tax_no, status, create_user, create_time) VALUES
 -- 发票采集类
 ('TASK_001', '北京科技有限公司-发票采集',       1, 1, '北京科技有限公司',       '91110000000000001A', 1, 3, '2026-02-01 09:00:00'),
 ('TASK_002', '上海贸易公司-发票采集',           1, 2, '上海贸易公司',           '91310000000000002B', 1, 3, '2026-02-03 10:15:00'),

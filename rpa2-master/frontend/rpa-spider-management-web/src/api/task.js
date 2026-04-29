@@ -54,11 +54,31 @@ export function getTaskById(id) {
 }
 
 /**
- * 执行任务
+ * 立即触发处理任务队列
+ */
+export function triggerQueue() {
+  return request({
+    url: '/task/queue/trigger',
+    method: 'post'
+  })
+}
+
+/**
+ * 执行任务（默认异步推送给机器人）
  */
 export function executeTask(id) {
   return request({
-    url: `/task/${id}/execute`,
+    url: `/task/${id}/execute/async`,
+    method: 'post'
+  })
+}
+
+/**
+ * 执行任务（同步模式，在服务端直接执行）
+ */
+export function executeTaskSync(id) {
+  return request({
+    url: `/task/${id}/execute/sync`,
     method: 'post'
   })
 }
@@ -92,5 +112,27 @@ export function getAllRobots(params) {
     url: '/robot',
     method: 'get',
     params
+  })
+}
+
+/**
+ * 获取任务执行记录列表
+ */
+export function getExecutionList(params) {
+  return request({
+    url: '/task/execution/list',
+    method: 'get',
+    params
+  })
+}
+
+/**
+ * 批量删除任务
+ */
+export function batchDeleteTasks(ids) {
+  return request({
+    url: '/task/batch',
+    method: 'delete',
+    data: ids
   })
 }

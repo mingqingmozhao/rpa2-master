@@ -231,6 +231,70 @@
                 <el-radio label="json">JSON 配置</el-radio>
               </el-radio-group>
             </el-form-item>
+            
+            <!-- AI 解析开关 (仅在解析环节显示) -->
+            <el-form-item v-if="currentStepType === 'parse'" label="AI 解析">
+              <el-switch
+                v-model="stepForm.useAI"
+                active-text="启用 AI 智能解析"
+                inactive-text="使用传统解析方式"
+                style="width: 100%;"
+              />
+              <div v-if="stepForm.useAI" style="margin-top: 8px; padding: 10px; background: #f0f9ff; border-radius: 4px; font-size: 12px; color: #606266;">
+                <el-icon style="vertical-align: middle; margin-right: 4px;"><InfoFilled /></el-icon>
+                启用 AI 后，系统将使用 Qwen2.5-VL-Plus 模型智能解析 HTML，自动识别字段结构。
+                <br/>
+                <span style="color: #409EFF;">💡 提示：</span>在脚本开头添加 <code style="background: #f5f7fa; padding: 2px 6px; border-radius: 3px;">ai:</code> 前缀即可使用 AI 解析。
+              </div>
+            </el-form-item>
+            
+            <!-- AI 采集开关 (仅在采集环节显示) -->
+            <el-form-item v-if="currentStepType === 'collect'" label="AI 采集">
+              <el-switch
+                v-model="stepForm.useAI"
+                active-text="启用 AI 智能采集"
+                inactive-text="使用传统采集方式"
+                style="width: 100%;"
+              />
+              <div v-if="stepForm.useAI" style="margin-top: 8px; padding: 10px; background: #f0f9ff; border-radius: 4px; font-size: 12px; color: #606266;">
+                <el-icon style="vertical-align: middle; margin-right: 4px;"><InfoFilled /></el-icon>
+                启用 AI 后，系统将使用 AI 模型智能生成采集配置，自动识别目标网页结构。
+                <br/>
+                <span style="color: #409EFF;">💡 提示：</span>在脚本开头添加 <code style="background: #f5f7fa; padding: 2px 6px; border-radius: 3px;">ai:</code> 前缀即可使用 AI 采集。
+              </div>
+            </el-form-item>
+            
+            <!-- AI 加工开关 (仅在加工环节显示) -->
+            <el-form-item v-if="currentStepType === 'process'" label="AI 加工">
+              <el-switch
+                v-model="stepForm.useAI"
+                active-text="启用 AI 智能加工"
+                inactive-text="使用传统加工方式"
+                style="width: 100%;"
+              />
+              <div v-if="stepForm.useAI" style="margin-top: 8px; padding: 10px; background: #f0f9ff; border-radius: 4px; font-size: 12px; color: #606266;">
+                <el-icon style="vertical-align: middle; margin-right: 4px;"><InfoFilled /></el-icon>
+                启用 AI 后，系统将使用 AI 模型智能清洗数据，自动验证数据质量。
+                <br/>
+                <span style="color: #409EFF;">💡 提示：</span>在脚本开头添加 <code style="background: #f5f7fa; padding: 2px 6px; border-radius: 3px;">ai:</code> 前缀即可使用 AI 加工。
+              </div>
+            </el-form-item>
+            
+            <!-- AI 保存开关 (仅在保存环节显示) -->
+            <el-form-item v-if="currentStepType === 'save'" label="AI 保存">
+              <el-switch
+                v-model="stepForm.useAI"
+                active-text="启用 AI 智能保存"
+                inactive-text="使用传统保存方式"
+                style="width: 100%;"
+              />
+              <div v-if="stepForm.useAI" style="margin-top: 8px; padding: 10px; background: #f0f9ff; border-radius: 4px; font-size: 12px; color: #606266;">
+                <el-icon style="vertical-align: middle; margin-right: 4px;"><InfoFilled /></el-icon>
+                启用 AI 后，系统将使用 AI 模型智能匹配字段，自动映射到数据库表。
+                <br/>
+                <span style="color: #409EFF;">💡 提示：</span>在脚本开头添加 <code style="background: #f5f7fa; padding: 2px 6px; border-radius: 3px;">ai:</code> 前缀即可使用 AI 保存。
+              </div>
+            </el-form-item>
 
             <el-form-item v-if="stepForm.stepType === 'groovy'" label="Groovy 脚本">
               <div style="position: relative;">
@@ -443,6 +507,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { InfoFilled } from '@element-plus/icons-vue'
 import { getProcessList, deleteProcess, createProcess, updateProcess, getProcessDetail, getProcessScripts, updateProcessScripts, validateGroovyScript, validateAllProcessSteps } from '@/api/process'
 import VersionHistory from './VersionHistory.vue'
 import PerformanceMonitor from './PerformanceMonitor.vue'
@@ -506,7 +571,8 @@ const stepForm = reactive({
   stepType: 'groovy',
   code: '',
   jsonConfig: '',
-  remark: ''
+  remark: '',
+  useAI: false  // AI 解析开关
 })
 
 const steps = ref([
@@ -639,7 +705,11 @@ const handleCreate = () => {
     description: '',
     remark: '',
     status: 1,
-    steps: 0
+    steps: 0,
+    collectScript: '',
+    parseScript: '',
+    processScript: '',
+    saveScript: ''
   })
   dialogVisible.value = true
 }
@@ -751,12 +821,15 @@ const getStepTypeName = (type) => {
 
 const handleEditStep = (index) => {
   currentStepIndex.value = index
+  currentStepType.value = steps.value[index].type
   const step = steps.value[index]
   stepForm.stepName = step.name
   stepForm.stepType = step.stepType || 'groovy'
   stepForm.code = step.code || ''
   stepForm.jsonConfig = step.jsonConfig || ''
   stepForm.remark = step.remark || ''
+  // 检查是否使用了 AI 解析 (代码以 ai:开头)
+  stepForm.useAI = step.code && step.code.trim().startsWith('ai:')
   stepEditDialogVisible.value = true
 }
 
@@ -1638,14 +1711,23 @@ const handleSaveStep = async () => {
     return
   }
   
-  // 如果是 Groovy 脚本，先进行后端语法校验
-  if (stepForm.stepType === 'groovy' && stepForm.code && stepForm.code.trim()) {
+  // 处理 AI 开关 - 在校验之前就添加 ai: 前缀（适用于所有环节）
+  let finalCode = stepForm.code
+  if (stepForm.useAI) {
+    // 如果启用了 AI 但代码不是以 ai:开头，自动添加前缀
+    if (finalCode && !finalCode.trim().startsWith('ai:')) {
+      finalCode = 'ai: ' + finalCode
+    }
+  }
+  
+  // 如果是 Groovy 脚本且不是 AI 脚本，进行后端语法校验
+  if (stepForm.stepType === 'groovy' && finalCode && finalCode.trim() && !finalCode.trim().startsWith('ai:')) {
     try {
       console.log('=== 正在校验单个环节 Groovy 脚本语法 ===')
-      console.log('脚本内容:', stepForm.code)
+      console.log('脚本内容:', finalCode)
       
       const validationResponse = await validateGroovyScript({
-        script: stepForm.code,
+        script: finalCode,
         stepName: steps.value[currentStepIndex.value].name
       })
       
@@ -1709,6 +1791,9 @@ const handleSaveStep = async () => {
       })
       return  // 阻止保存
     }
+  } else if (stepForm.stepType === 'groovy' && finalCode && finalCode.trim().startsWith('ai:')) {
+    // AI 脚本，跳过语法校验
+    console.log('检测到 AI 脚本，跳过语法校验')
   }
   
   // 校验通过（或不是 Groovy 脚本），继续保存
@@ -1717,11 +1802,11 @@ const handleSaveStep = async () => {
     const index = currentStepIndex.value
     const step = steps.value[index]
     
-    // 更新前端内存
+    // finalCode 已经在上面处理过了，这里直接使用
     steps.value[index] = {
       ...steps.value[index],
       stepType: stepForm.stepType,
-      code: stepForm.code,
+      code: finalCode,
       jsonConfig: stepForm.jsonConfig,
       remark: stepForm.remark,
       configured: true,
@@ -1764,11 +1849,17 @@ const handleValidateAll = async () => {
     return
   }
   
-  // 2. 检查是否有 Groovy 脚本需要校验
-  const hasGroovyScript = steps.value.some(s => s.stepType === 'groovy' && s.code && s.code.trim())
+  // 2. 检查是否有 Groovy 脚本需要校验（排除 AI 脚本）
+  const hasGroovyScript = steps.value.some(s => 
+    s.stepType === 'groovy' && 
+    s.code && 
+    s.code.trim() && 
+    !s.code.trim().startsWith('ai:') && 
+    !s.code.trim().startsWith('AI:')
+  )
   if (!hasGroovyScript) {
     ElMessageBox.alert(
-      '没有需要校验的 Groovy 脚本（所有环节都是 JSON 配置或空脚本）',
+      '没有需要校验的 Groovy 脚本（所有环节都是 AI 脚本、JSON 配置或空脚本）',
       '提示',
       { type: 'info' }
     )
@@ -2001,11 +2092,25 @@ const handleSubmit = async () => {
       console.log('=== 提交流程数据 ===')
       console.log('formData:', formData)
       console.log('category:', formData.category)
+      const payload = {
+        processCode: formData.processCode,
+        processName: formData.processName,
+        category: formData.category,
+        version: formData.version,
+        description: formData.description,
+        remark: formData.remark,
+        status: formData.status,
+        steps: formData.steps,
+        collectScript: formData.collectScript,
+        parseScript: formData.parseScript,
+        processScript: formData.processScript,
+        saveScript: formData.saveScript
+      }
       
       if (isEdit.value) {
-        await updateProcess(formData.id, formData)
+        await updateProcess(formData.id, payload)
       } else {
-        await createProcess(formData)
+        await createProcess(payload)
       }
       ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
       dialogVisible.value = false
@@ -2038,6 +2143,10 @@ onMounted(() => {
   
   .search-form {
     margin-bottom: 20px;
+
+    :deep(.el-select) {
+      width: 180px;
+    }
   }
 }
 

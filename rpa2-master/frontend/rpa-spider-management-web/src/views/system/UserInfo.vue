@@ -9,8 +9,8 @@
           </template>
           <div class="user-profile">
             <div class="avatar-container">
-              <el-avatar :size="120" :src="avatarUrl">
-                <img src="https://cube.elemecdn.com/e/fd/0fc7d20532fdaf769a25683617711.png" />
+              <el-avatar :size="120" :src="avatarUrl" @error="handleAvatarError">
+                <el-icon :size="60"><User /></el-icon>
               </el-avatar>
               <div class="avatar-overlay" @click="showAvatarDialog = true">
                 <el-icon><Camera /></el-icon>
@@ -225,22 +225,33 @@ const passwordRules = reactive({
 // 计算头像 URL
 const avatarUrl = computed(() => {
   if (userInfo.avatar) {
-    // 如果是完整 URL 则直接返回，否则拼接基础 URL
+    // 如果是完整 URL 则直接返回
     if (userInfo.avatar.startsWith('http://') || userInfo.avatar.startsWith('https://')) {
       return userInfo.avatar
     }
-    // 使用代理后的相对路径（开发环境）或生产环境的绝对路径
+    // 如果是以 / 开头的相对路径，直接返回（Vite 代理会自动转发到后端）
+    if (userInfo.avatar.startsWith('/')) {
+      return userInfo.avatar
+    }
+    // 其他情况直接返回
     return userInfo.avatar
   }
   return defaultAvatar
 })
+
+// 头像加载失败处理
+const avatarLoadError = ref(false)
+const handleAvatarError = () => {
+  avatarLoadError.value = true
+  console.warn('头像加载失败，使用默认头像')
+}
 
 const loadUserInfo = async () => {
   try {
     const res = await getUserInfo()
     const data = res.data
     
-    Object.assign(userInfo, {
+    const nextUserInfo = {
       userId: data.userId,
       username: data.username,
       realName: data.realName || '',
@@ -248,6 +259,12 @@ const loadUserInfo = async () => {
       email: data.email || '',
       phone: data.phone || '',
       createTime: data.createTime || new Date().toLocaleString()
+    }
+
+    Object.assign(userInfo, nextUserInfo)
+    userStore.setUserInfo({
+      ...(userStore.userInfo || {}),
+      ...nextUserInfo
     })
 
     // 填充表单
@@ -382,10 +399,7 @@ const uploadAvatar = async (options) => {
     
     ElMessage.success('头像上传成功')
     showAvatarDialog.value = false
-    // 等待一会儿再重新加载用户信息，确保数据已更新
-    setTimeout(async () => {
-      await loadUserInfo()
-    }, 500)
+    await loadUserInfo()
   } catch (error) {
     console.error('上传失败:', error)
     ElMessage.error('上传失败：' + (error.message || '未知错误'))

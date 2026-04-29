@@ -6,11 +6,12 @@
 
     <parent>
         <groupId>com.rpa</groupId>
-        <artifactId>rpa-system</artifactId>
+        <artifactId>rpa-modules</artifactId>
         <version>1.0.0</version>
     </parent>
-
+    
     <artifactId>rpa-auth</artifactId>
+    <name>RPA Auth Module</name>
 
     <dependencies>
         <dependency>

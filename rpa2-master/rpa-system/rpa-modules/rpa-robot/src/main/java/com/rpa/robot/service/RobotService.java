@@ -28,6 +28,9 @@ public class RobotService {
     @Autowired
     private RobotRepository robotRepository;
     
+    @Autowired
+    private RobotConnectionManager connectionManager;
+    
     /**
      * 分页查询机器人列表
      */
@@ -63,9 +66,9 @@ public class RobotService {
     @Transactional(readOnly = true)
     public RobotDTO getById(Long id) {
         log.info("根据 ID 查询机器人，ID: {}", id);
-        return robotRepository.findById(id)
-                .map(RobotDTO::fromEntity)
-                .orElse(null);
+        Robot robot = robotRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("机器人不存在"));
+        return RobotDTO.fromEntity(robot);
     }
     
     /**
@@ -74,9 +77,18 @@ public class RobotService {
     @Transactional(readOnly = true)
     public RobotDTO getByCode(String robotCode) {
         log.info("根据编码查询机器人，编码：{}", robotCode);
-        return robotRepository.findByRobotCode(robotCode)
-                .map(RobotDTO::fromEntity)
-                .orElse(null);
+        Robot robot = robotRepository.findByRobotCodeAndIsDeletedFalse(robotCode).orElse(null);
+        return robot != null ? RobotDTO.fromEntity(robot) : null;
+    }
+    
+    /**
+     * 根据编码查询机器人（不处理空值）
+     */
+    @Transactional(readOnly = true)
+    public RobotDTO findByCode(String robotCode) {
+        log.info("根据编码查询机器人，编码：{}", robotCode);
+        Robot robot = robotRepository.findByRobotCodeAndIsDeletedFalse(robotCode).orElse(null);
+        return robot != null ? RobotDTO.fromEntity(robot) : null;
     }
     
     /**
@@ -130,50 +142,27 @@ public class RobotService {
     /**
      * 更新机器人
      */
+    @Transactional
     public RobotDTO update(Long id, RobotDTO dto) {
-        log.info("更新机器人，ID: {}", id);
+        log.info("更新机器人信息，ID: {}", id);
         
-        Robot robot = robotRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("机器人不存在，ID: " + id));
+        Robot existing = robotRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("机器人不存在"));
         
-        // 校验编码是否为空
-        if (dto.getRobotCode() == null || dto.getRobotCode().trim().isEmpty()) {
-            throw new RuntimeException("机器人编码不能为空");
+        if (dto.getRobotName() != null) {
+            existing.setRobotName(dto.getRobotName());
+        }
+        if (dto.getIpAddress() != null) {
+            existing.setIpAddress(dto.getIpAddress());
+        }
+        if (dto.getDepartmentName() != null) {
+            existing.setDepartmentName(dto.getDepartmentName());
+        }
+        if (dto.getDescription() != null) {
+            existing.setDescription(dto.getDescription());
         }
         
-        // 校验名称是否为空
-        if (dto.getRobotName() == null || dto.getRobotName().trim().isEmpty()) {
-            throw new RuntimeException("机器人名称不能为空");
-        }
-        
-        // 检查编码是否被其他机器人使用
-        if (!robot.getRobotCode().equals(dto.getRobotCode()) && 
-            robotRepository.existsByRobotCode(dto.getRobotCode())) {
-            throw new RuntimeException("机器人编码已存在：" + dto.getRobotCode());
-        }
-        
-        // 校验 IP 地址格式
-        String ipError = IpValidator.validate(dto.getIpAddress());
-        if (ipError != null) {
-            throw new RuntimeException(ipError);
-        }
-        
-        robot.setRobotCode(dto.getRobotCode());
-        robot.setRobotName(dto.getRobotName());
-        robot.setType(dto.getType());
-        // 将字符串状态转换为数字状态
-        robot.setStatus(convertStatusToInteger(dto.getStatus()));
-        robot.setIpAddress(dto.getIpAddress());
-        robot.setDepartment(dto.getDepartment());
-        robot.setOwnerId(dto.getOwnerId());
-        robot.setOwnerName(dto.getOwnerName());
-        robot.setDescription(dto.getDescription());
-        robot.setRemark(dto.getRemark());
-        
-        Robot updated = robotRepository.save(robot);
-        log.info("机器人更新成功，ID: {}", updated.getId());
-        
-        return RobotDTO.fromEntity(updated);
+        return RobotDTO.fromEntity(robotRepository.save(existing));
     }
     
     /**
@@ -211,11 +200,22 @@ public class RobotService {
     public RobotStatusDTO getStatus() {
         log.info("获取机器人状态统计");
         
+        // 打印所有机器人的状态，用于调试
+        log.info("========== 所有机器人状态详情 ==========");
+        robotRepository.findAll().forEach(robot -> {
+            log.info("机器人: {}, 状态: {}, isDeleted: {}", 
+                    robot.getRobotCode(), robot.getStatus(), robot.getIsDeleted());
+        });
+        log.info("========== 机器人状态详情结束 ==========");
+        
         Long online = robotRepository.countOnlineRobots();
         Long offline = robotRepository.countOfflineRobots();
         Long busy = robotRepository.countBusyRobots();
         Long fault = robotRepository.countFaultRobots();
         Long total = online + offline + busy + fault;
+        
+        log.info("机器人状态统计 - 在线: {}, 离线: {}, 忙碌: {}, 故障: {}, 总计: {}", 
+                 online, offline, busy, fault, total);
         
         return new RobotStatusDTO(online, offline, busy, fault, total);
     }
@@ -235,7 +235,17 @@ public class RobotService {
      * 更新机器人状态
      */
     public void updateStatus(Long id, String status) {
-        log.info("更新机器人状态，ID: {}, 状态：{}", id, status);
+        updateStatus(id, status, false);
+    }
+
+    /**
+     * 更新机器人状态
+     * @param id 机器人ID
+     * @param status 新状态
+     * @param force 是否强制更新（任务完成时需要强制切换状态）
+     */
+    public void updateStatus(Long id, String status, boolean force) {
+        log.info("更新机器人状态，ID: {}, 状态：{}, force: {}", id, status, force);
         
         Robot robot = robotRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("机器人不存在，ID: " + id));
@@ -257,9 +267,9 @@ public class RobotService {
             throw new RuntimeException("非法的状态值：" + status + "，只能是 ONLINE/OFFLINE/BUSY/FAULT 之一");
         }
         
-        // 检查状态切换的合法性
+        // 检查状态切换的合法性（除非是强制更新）
         Integer oldStatus = robot.getStatus();
-        if (oldStatus != null && oldStatus == 2 && statusInt != 2) { // 2 = BUSY
+        if (!force && oldStatus != null && oldStatus == 2 && statusInt != 2) { // 2 = BUSY
             log.warn("机器人正在执行任务，无法切换状态，ID: {}, 当前状态：{}", id, oldStatus);
             throw new RuntimeException("机器人正在执行任务，无法切换状态");
         }
@@ -279,8 +289,7 @@ public class RobotService {
     public void updateStatusByCode(String robotCode, String status) {
         log.info("根据编码更新机器人状态，编码：{}, 状态：{}", robotCode, status);
         
-        Robot robot = robotRepository.findByRobotCode(robotCode)
-                .orElse(null);
+        Robot robot = robotRepository.findByRobotCodeAndIsDeletedFalse(robotCode).orElse(null);
         
         // 如果机器人不存在，记录警告但不抛异常（机器人可能还未在系统中注册）
         if (robot == null) {
@@ -320,6 +329,47 @@ public class RobotService {
         
         log.info("机器人状态更新成功，编码：{}, 原状态：{}, 新状态：{}", robotCode, oldStatus, status);
     }
+
+    /**
+     * 根据编码更新机器人状态和端口
+     */
+    @Transactional
+    public void updateStatusAndPortByCode(String robotCode, String status, Integer port) {
+        log.info("根据编码更新机器人状态和端口，编码：{}, 状态：{}, 端口：{}", robotCode, status, port);
+
+        Robot robot = robotRepository.findByRobotCodeAndIsDeletedFalse(robotCode).orElse(null);
+        if (robot == null) {
+            log.warn("机器人不存在，跳过状态更新，编码：{}", robotCode);
+            return;
+        }
+        if (robot.getIsDeleted() != null && robot.getIsDeleted() == 1) {
+            log.warn("机器人已被删除，无法更新状态，编码：{}", robotCode);
+            return;
+        }
+        if (status == null || status.trim().isEmpty()) {
+            throw new RuntimeException("状态不能为空");
+        }
+
+        Integer statusInt = convertStatusToInteger(status);
+        if (statusInt == null) {
+            throw new RuntimeException("非法的状态值：" + status + "，只能是 ONLINE/OFFLINE/BUSY/FAULT 之一");
+        }
+
+        Integer oldStatus = robot.getStatus();
+        if (oldStatus == 2 && statusInt != 2) {
+            log.warn("机器人正在执行任务，无法切换状态，编码：{}, 当前状态：{}", robotCode, oldStatus);
+            return;
+        }
+
+        robot.setStatus(statusInt);
+        if (port != null && port > 0) {
+            robot.setPort(port);
+        }
+        robot.setUpdateTime(LocalDateTime.now());
+        robotRepository.save(robot);
+
+        log.info("机器人状态和端口更新成功，编码：{}, 原状态：{}, 新状态：{}, 端口：{}", robotCode, oldStatus, status, port);
+    }
     
     /**
      * 将字符串状态转换为数字
@@ -329,22 +379,31 @@ public class RobotService {
         switch (status) {
             case "ONLINE": return 1;
             case "BUSY": return 2;
-            case "OFFLINE": return 0;
-            case "FAULT": return -1;
+            case "OFFLINE": return 3;
+            case "FAULT": return 4;
             default: return null;
         }
     }
     
     /**
-     * 更新心跳时间
+     * 更新心跳
      */
-    public void updateHeartbeat(Long id) {
-        log.debug("更新机器人心跳时间，ID: {}", id);
+    @Transactional
+    public void updateHeartbeat(Long id, String status, Long currentTaskId) {
+        log.debug("更新机器人心跳，ID: {}, status: {}, currentTaskId: {}", id, status, currentTaskId);
         
         Robot robot = robotRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("机器人不存在，ID: " + id));
+                .orElseThrow(() -> new RuntimeException("机器人不存在"));
         
+        if (status != null) {
+            robot.setStatus(convertStatusToInteger(status));
+        }
         robot.setLastHeartbeat(LocalDateTime.now());
+        
+        if (currentTaskId != null) {
+            log.debug("机器人正在执行任务，ID: {}", currentTaskId);
+        }
+        
         robotRepository.save(robot);
     }
     
@@ -430,8 +489,8 @@ public class RobotService {
         switch (status) {
             case 1: return "ONLINE";
             case 2: return "BUSY";
-            case 0: return "OFFLINE";
-            case -1: return "FAULT";
+            case 3: return "OFFLINE";
+            case 4: return "FAULT";
             default: return "OFFLINE";
         }
     }

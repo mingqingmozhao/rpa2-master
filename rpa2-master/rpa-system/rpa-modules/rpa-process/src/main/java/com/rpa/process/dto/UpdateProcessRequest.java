@@ -1,8 +1,10 @@
 package com.rpa.process.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UpdateProcessRequest {
     
     @NotBlank(message = "流程编码不能为空")
